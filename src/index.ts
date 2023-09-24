@@ -1,8 +1,9 @@
+import type { DatabaseObject } from './types/Database';
 import { Client } from 'pg';
 import getSchemaNames from './queries/getSchemaNames';
 import getDatabaseObjectsFromSchema from './queries/getDatabaseObjects';
 import introspectSchemaTables from './queries/introspectSchemaTables';
-import type { DatabaseObject } from './types/Database';
+import introspectSchemaEnums from './queries/introspectSchemaEnums';
 
 // testing
 const client = new Client({
@@ -34,7 +35,7 @@ const connectToDatabase = async () => {
     console.log('Data:', schemas);
 
     const objects = await getDatabaseObjectsFromSchema(client, ['public']);
-    const tableSchemas = await introspectSchemaTables(
+    const tables = await introspectSchemaTables(
       client,
       objects.filter(
         (obj): obj is DatabaseObject & { objectType: 'table' } =>
@@ -42,7 +43,17 @@ const connectToDatabase = async () => {
       )
     );
 
-    console.dir(tableSchemas, { depth: 7 });
+    console.dir(tables, { depth: 7 });
+
+    const enums = await introspectSchemaEnums(
+      client,
+      objects.filter(
+        (obj): obj is DatabaseObject & { objectType: 'enum' } =>
+          obj.objectType === 'enum'
+      )
+    );
+
+    console.dir(enums, { depth: 7 });
   } catch (err) {
     console.error('Database connection error', err);
   } finally {
