@@ -55,6 +55,7 @@ export default async function introspectSchemaTables<
             pg_namespace.nspname AS table_schema,
             pg_class.relname AS table_name,
             pg_attribute.attname AS column_name,
+            pg_attribute.attndims AS dimensions,
             pg_type.typname AS type_name,
             CASE
                 WHEN pg_type.typtype = 'c' THEN 'composite'
@@ -97,6 +98,7 @@ export default async function introspectSchemaTables<
                 'typeDetails', td.type_name,
                 'typeCategory', td.type_category,
                 'isArray', td.is_array,
+                'dimensions', td.dimensions,
                 'constraints', cd.constraints
             ) AS column_details
         FROM
