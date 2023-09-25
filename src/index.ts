@@ -5,6 +5,8 @@ import getDatabaseObjectsFromSchema from '@/queries/getDatabaseObjects';
 import instantiateDatabaseConnection from '@/database';
 import introspectSchemaTables from '@/queries/introspectSchemaTables';
 import introspectSchemaEnums from '@/queries/introspectSchemaEnums';
+import introspectSchemaViews from './queries/introspectSchemaViews';
+import introspectSchemaRanges from './queries/introspectSchemaRanges';
 
 const introspectDatabase = async (connectionConfig: ClientConfig) => {
   const db = await instantiateDatabaseConnection(connectionConfig);
@@ -12,9 +14,11 @@ const introspectDatabase = async (connectionConfig: ClientConfig) => {
     await db.query('BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE');
 
     const schemas = await getSchemaNames(db);
-    console.log('Data:', schemas);
+    console.log('Schemas: ', schemas);
 
     const pgObjects = await getDatabaseObjectsFromSchema(db, ['public']);
+
+    console.dir(pgObjects, { depth: 7 });
 
     const {
       tables,
@@ -31,8 +35,21 @@ const introspectDatabase = async (connectionConfig: ClientConfig) => {
 
     const introspectedEnums = await introspectSchemaEnums(db, enums);
     console.dir(introspectedEnums, { depth: 7 });
+
+    // TODO: add dimensions fix for materialized views
+    const introspectedMaterializedViews = await introspectSchemaViews(
+      db,
+      materializedViews
+    );
+    console.dir(introspectedMaterializedViews, { depth: 7 });
+
+    const introspectedViews = await introspectSchemaViews(db, views);
+    console.dir(introspectedViews, { depth: 7 });
+
+    const introspectedRanges = await introspectSchemaRanges(db, ranges);
+    console.dir(introspectedRanges, { depth: 7 });
   } catch (err) {
-    console.error('Error:', err);
+    console.error(err);
   } finally {
     await db.query('COMMIT');
     await db.end();
