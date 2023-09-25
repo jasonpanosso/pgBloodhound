@@ -156,7 +156,7 @@ export default async function introspectSchemaTables<
 
   if (queryResult.rowCount === 0) {
     throw new Error(
-      `Error introspecting database: Unable to find any table details data for tables:
+      `Error introspecting database: Unable to introspect any data for tables:
         ${tables.map((table) => `'${table.objectName}'`).join(', ')}`
     );
   }

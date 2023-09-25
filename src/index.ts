@@ -1,64 +1,80 @@
-import type { DatabaseObject } from './types/Database';
-import { Client } from 'pg';
-import getSchemaNames from './queries/getSchemaNames';
-import getDatabaseObjectsFromSchema from './queries/getDatabaseObjects';
-import introspectSchemaTables from './queries/introspectSchemaTables';
-import introspectSchemaEnums from './queries/introspectSchemaEnums';
+import type { DatabaseObject, DatabaseObjectType } from '@/types/Database';
+import type { ClientConfig } from 'pg';
+import getSchemaNames from '@/queries/getSchemaNames';
+import getDatabaseObjectsFromSchema from '@/queries/getDatabaseObjects';
+import instantiateDatabaseConnection from '@/database';
+import introspectSchemaTables from '@/queries/introspectSchemaTables';
+import introspectSchemaEnums from '@/queries/introspectSchemaEnums';
 
-// testing
-const client = new Client({
+const introspectDatabase = async (connectionConfig: ClientConfig) => {
+  const db = await instantiateDatabaseConnection(connectionConfig);
+  try {
+    await db.query('BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE');
+
+    const schemas = await getSchemaNames(db);
+    console.log('Data:', schemas);
+
+    const pgObjects = await getDatabaseObjectsFromSchema(db, ['public']);
+
+    const {
+      tables,
+      enums,
+      views,
+      materializedViews,
+      ranges,
+      domains,
+      compositeTypes,
+    } = sortDatabaseObjectsByType(pgObjects);
+
+    const introspectedTables = await introspectSchemaTables(db, tables);
+    console.dir(introspectedTables, { depth: 7 });
+
+    const introspectedEnums = await introspectSchemaEnums(db, enums);
+    console.dir(introspectedEnums, { depth: 7 });
+  } catch (err) {
+    console.error('Error:', err);
+  } finally {
+    await db.query('COMMIT');
+    await db.end();
+  }
+};
+
+function filterObjectsByType<T extends DatabaseObjectType>(
+  objects: DatabaseObject[],
+  type: T
+): (DatabaseObject & { objectType: T })[] {
+  return objects.filter(
+    (obj): obj is DatabaseObject & { objectType: T } => obj.objectType === type
+  );
+}
+
+type SortedDatabaseObjects = {
+  [K in DatabaseObjectType as K extends K
+    ? `${K}s`
+    : never]: (DatabaseObject & { objectType: K })[];
+};
+
+function sortDatabaseObjectsByType(
+  databaseObjects: DatabaseObject[]
+): SortedDatabaseObjects {
+  return {
+    tables: filterObjectsByType(databaseObjects, 'table'),
+    enums: filterObjectsByType(databaseObjects, 'enum'),
+    compositeTypes: filterObjectsByType(databaseObjects, 'compositeType'),
+    views: filterObjectsByType(databaseObjects, 'view'),
+    materializedViews: filterObjectsByType(databaseObjects, 'materializedView'),
+    ranges: filterObjectsByType(databaseObjects, 'range'),
+    domains: filterObjectsByType(databaseObjects, 'domain'),
+  };
+}
+
+// temp: testing
+const config: ClientConfig = {
   user: 'postgres',
   host: 'localhost',
   database: 'postgres',
   password: 'postgres',
   port: 54322,
-});
-
-const connectToDatabase = async () => {
-  try {
-    await client.connect();
-
-    const { rows } = await getSchemaNames(client);
-    const schemas = rows
-      .map((row: { nspname?: string }) => {
-        if ('nspname' in row) {
-          return row.nspname;
-        }
-      })
-      .filter((item): item is string => item !== undefined);
-
-    if (!schemas.length) {
-      throw new Error(
-        'Error introspecting database: No non-system schemas found'
-      );
-    }
-    console.log('Data:', schemas);
-
-    const objects = await getDatabaseObjectsFromSchema(client, ['public']);
-    const tables = await introspectSchemaTables(
-      client,
-      objects.filter(
-        (obj): obj is DatabaseObject & { objectType: 'table' } =>
-          obj.objectType === 'table'
-      )
-    );
-
-    console.dir(tables, { depth: 7 });
-
-    const enums = await introspectSchemaEnums(
-      client,
-      objects.filter(
-        (obj): obj is DatabaseObject & { objectType: 'enum' } =>
-          obj.objectType === 'enum'
-      )
-    );
-
-    console.dir(enums, { depth: 7 });
-  } catch (err) {
-    console.error('Database connection error', err);
-  } finally {
-    await client.end();
-  }
 };
 
-void connectToDatabase();
+void introspectDatabase(config);

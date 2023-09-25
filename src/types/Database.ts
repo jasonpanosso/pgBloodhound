@@ -1,7 +1,19 @@
+export const DATABASE_OBJECT_TYPES = [
+  'table',
+  'view',
+  'materializedView',
+  'compositeType',
+  'domain',
+  'enum',
+  'range',
+] as const;
+
+export type DatabaseObjectType = (typeof DATABASE_OBJECT_TYPES)[number];
+
 export interface DatabaseObject {
   objectName: string;
   schema: string;
-  objectType: string;
+  objectType: DatabaseObjectType;
   description: string | null;
 }
 
