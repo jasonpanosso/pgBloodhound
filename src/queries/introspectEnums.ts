@@ -2,7 +2,7 @@ import type { Client } from 'pg';
 import { generatePairedPgParameters } from '@/utils/queryUtils';
 import type { DatabaseObject } from '@/types/Database';
 
-export default async function introspectSchemaEnums<
+export default async function introspectEnums<
   T extends (DatabaseObject & { objectType: 'enum' })[],
 >(db: Client, databaseObjects: T) {
   const pgParameters = generatePairedPgParameters(databaseObjects);

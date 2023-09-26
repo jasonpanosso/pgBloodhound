@@ -2,7 +2,7 @@ import type { Client } from 'pg';
 import { generatePairedPgParameters } from '@/utils/queryUtils';
 import type { DatabaseObject } from '@/types/Database';
 
-export default async function introspectSchemaViews<
+export default async function introspectViews<
   T extends (DatabaseObject & { objectType: 'view' | 'materializedView' })[],
 >(db: Client, databaseObjects: T) {
   const pgParameters = generatePairedPgParameters(databaseObjects);

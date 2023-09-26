@@ -3,10 +3,10 @@ import type { ClientConfig } from 'pg';
 import getSchemaNames from '@/queries/getSchemaNames';
 import getDatabaseObjectsFromSchema from '@/queries/getDatabaseObjects';
 import instantiateDatabaseConnection from '@/database';
-import introspectSchemaTables from '@/queries/introspectSchemaTables';
-import introspectSchemaEnums from '@/queries/introspectSchemaEnums';
-import introspectSchemaViews from './queries/introspectSchemaViews';
-import introspectSchemaRanges from './queries/introspectSchemaRanges';
+import introspectTables from '@/queries/introspectTables';
+import introspectEnums from '@/queries/introspectEnums';
+import introspectViews from './queries/introspectViews';
+import introspectRanges from './queries/introspectRanges';
 
 const introspectDatabase = async (connectionConfig: ClientConfig) => {
   const db = await instantiateDatabaseConnection(connectionConfig);
@@ -30,23 +30,23 @@ const introspectDatabase = async (connectionConfig: ClientConfig) => {
       compositeTypes,
     } = sortDatabaseObjectsByType(pgObjects);
 
-    const introspectedTables = await introspectSchemaTables(db, tables);
+    const introspectedTables = await introspectTables(db, tables);
     console.dir(introspectedTables, { depth: 7 });
 
-    const introspectedEnums = await introspectSchemaEnums(db, enums);
+    const introspectedEnums = await introspectEnums(db, enums);
     console.dir(introspectedEnums, { depth: 7 });
 
     // TODO: add dimensions fix for materialized views
-    const introspectedMaterializedViews = await introspectSchemaViews(
+    const introspectedMaterializedViews = await introspectViews(
       db,
       materializedViews
     );
     console.dir(introspectedMaterializedViews, { depth: 7 });
 
-    const introspectedViews = await introspectSchemaViews(db, views);
+    const introspectedViews = await introspectViews(db, views);
     console.dir(introspectedViews, { depth: 7 });
 
-    const introspectedRanges = await introspectSchemaRanges(db, ranges);
+    const introspectedRanges = await introspectRanges(db, ranges);
     console.dir(introspectedRanges, { depth: 7 });
   } catch (err) {
     console.error(err);
@@ -65,6 +65,7 @@ function filterObjectsByType<T extends DatabaseObjectType>(
   );
 }
 
+// inconsequential type, a generic with the same content would not work.
 type SortedDatabaseObjects = {
   [K in DatabaseObjectType as K extends K
     ? `${K}s`

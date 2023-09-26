@@ -2,7 +2,7 @@ import type { Client } from 'pg';
 import { generatePairedPgParameters } from '@/utils/queryUtils';
 import type { DatabaseObject } from '@/types/Database';
 
-export default async function introspectSchemaTables<
+export default async function introspectTables<
   T extends (DatabaseObject & { objectType: 'table' })[],
 >(db: Client, tables: T) {
   const tableAndSchemaNames = tables.flatMap((t) => [t.schema, t.objectName]);

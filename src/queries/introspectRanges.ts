@@ -2,7 +2,7 @@ import type { Client } from 'pg';
 import { generatePairedPgParameters } from '@/utils/queryUtils';
 import type { DatabaseObject } from '@/types/Database';
 
-export default async function introspectSchemaRanges<
+export default async function introspectRanges<
   T extends (DatabaseObject & { objectType: 'range' })[],
 >(db: Client, databaseObjects: T) {
   const pgParameters = generatePairedPgParameters(databaseObjects);
