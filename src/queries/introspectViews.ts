@@ -1,17 +1,39 @@
 import type { Client } from 'pg';
-import { generatePairedPgParameters } from '@/utils/queryUtils';
 import type { DatabaseObject } from '@/types/Database';
+import {
+  handleQueryReturnedNoResults,
+  handleSqlQueryError,
+} from '@/utils/errorHandlers';
 
 export default async function introspectViews<
-  T extends (DatabaseObject & { objectType: 'view' | 'materializedView' })[],
->(db: Client, databaseObjects: T) {
-  const pgParameters = generatePairedPgParameters(databaseObjects);
-  const viewAndSchemaNames = databaseObjects.flatMap((t) => [
-    t.schema,
-    t.objectName,
-  ]);
+  T extends (DatabaseObject & {
+    objectType: 'view' | 'materializedView';
+    schema: K;
+  })[],
+  K extends string,
+>(db: Client, schema: K, databaseObjects: T) {
+  if (!databaseObjects.length) {
+    return {};
+  }
 
-  const query = `
+  const views = databaseObjects.map((t) => t.objectName);
+
+  let queryResult;
+  try {
+    queryResult = await db.query(query, [schema, views]);
+  } catch (err) {
+    throw handleSqlQueryError(err, schema, 'views');
+  }
+
+  if (queryResult.rowCount === 0) {
+    throw handleQueryReturnedNoResults(databaseObjects, schema, 'views');
+  }
+
+  return queryResult.rows;
+}
+
+// TODO: add dimensions fix for materialized views
+const query = `
     WITH combined_details AS (
         SELECT
             n.nspname AS table_schema,
@@ -39,7 +61,7 @@ export default async function introspectViews<
             (c.relkind = 'm' OR c.relkind = 'v')
             AND a.attnum > 0
             AND NOT a.attisdropped
-            AND (n.nspname, c.relname) IN (${pgParameters})
+            AND n.nspname = $1 AND c.relname = ANY($2)
     ),
 
     column_details AS (
@@ -66,58 +88,12 @@ export default async function introspectViews<
             combined_details
         GROUP BY
             table_schema, table_name, view_type
-    ),
-
-    view_details AS (
-        SELECT
-            table_schema,
-            CASE
-                WHEN view_type = 'view' THEN 'views'
-                WHEN view_type = 'materializedView' THEN 'materializedViews'
-                ELSE view_type
-            END AS plural_view_type,
-            JSON_OBJECT_AGG(table_name, columns) AS view_data
-        FROM
-            column_details
-        GROUP BY
-            table_schema, view_type
-    ),
-
-    final_output AS (
-        SELECT
-            table_schema,
-            JSON_OBJECT_AGG(
-                plural_view_type,
-                view_data
-            ) AS schema_data
-        FROM
-            view_details
-        GROUP BY
-            table_schema
     )
 
-    SELECT JSON_OBJECT_AGG(table_schema, schema_data) AS schemas FROM final_output;
+    SELECT
+        JSON_OBJECT_AGG(table_name, columns) AS result
+    FROM
+        column_details
+    GROUP BY
+        table_schema, view_type;
   `;
-
-  let queryResult;
-  try {
-    queryResult = await db.query(query, viewAndSchemaNames);
-  } catch (err) {
-    if (err instanceof Error) {
-      throw new Error(`SQL Error while fetching view details: ${err.message}`);
-    } else {
-      throw new Error(
-        `An unknown error occurred while fetching view details: ${String(err)}`
-      );
-    }
-  }
-
-  if (queryResult.rowCount === 0) {
-    throw new Error(
-      `Error introspecting database: Unable to find any data for views:
-        ${databaseObjects.map((obj) => `'${obj.objectName}'`).join(', ')}`
-    );
-  }
-
-  return queryResult.rows;
-}

@@ -1,17 +1,35 @@
 import type { Client } from 'pg';
-import { generatePairedPgParameters } from '@/utils/queryUtils';
 import type { DatabaseObject } from '@/types/Database';
+import {
+  handleQueryReturnedNoResults,
+  handleSqlQueryError,
+} from '@/utils/errorHandlers';
 
 export default async function introspectDomains<
-  T extends (DatabaseObject & { objectType: 'domain' })[],
->(db: Client, databaseObjects: T) {
-  const pgParameters = generatePairedPgParameters(databaseObjects);
-  const domainAndSchemaNames = databaseObjects.flatMap((t) => [
-    t.schema,
-    t.objectName,
-  ]);
+  T extends (DatabaseObject & { objectType: 'domain'; schema: K })[],
+  K extends string,
+>(db: Client, schema: K, databaseObjects: T) {
+  if (!databaseObjects.length) {
+    return {};
+  }
 
-  const query = `
+  const domains = databaseObjects.map((t) => t.objectName);
+
+  let queryResult;
+  try {
+    queryResult = await db.query(query, [schema, domains]);
+  } catch (err) {
+    throw handleSqlQueryError(err, schema, 'domains');
+  }
+
+  if (queryResult.rowCount === 0) {
+    throw handleQueryReturnedNoResults(databaseObjects, schema, 'domains');
+  }
+
+  return queryResult.rows;
+}
+
+const query = `
     WITH domain_details AS (
         SELECT
             n.nspname AS schema_name,
@@ -25,53 +43,19 @@ export default async function introspectDomains<
             pg_catalog.pg_namespace AS n ON d.typnamespace = n.oid
         WHERE
             d.typtype = 'd'
-            AND (n.nspname, d.typname) IN (${pgParameters})
-    ),
-
-    schema_domains AS(
+            AND n.nspname = $1 AND d.typname = ANY($2)
+    )
         SELECT
-            schema_name,
-            json_object_agg(
+              json_object_agg(
                 domain_name,
                 json_build_object(
                     'baseType', base_type,
                     'defaultValue', default_value,
                     'collation', domain_collation
                 )
-            ) AS domains
+              ) AS result
         FROM
             domain_details
         GROUP BY
-            schema_name
-)
-    SELECT
-        json_object_agg(
-            schema_name,
-            json_build_object('domains', domains)
-        ) AS schemas
-    FROM
-        schema_domains;
+            schema_name;
   `;
-
-  let queryResult;
-  try {
-    queryResult = await db.query(query, domainAndSchemaNames);
-  } catch (err) {
-    if (err instanceof Error) {
-      throw new Error(`SQL Error while fetching table details: ${err.message}`);
-    } else {
-      throw new Error(
-        `An unknown error occurred while fetching table details: ${String(err)}`
-      );
-    }
-  }
-
-  if (queryResult.rowCount === 0) {
-    throw new Error(
-      `Error introspecting database: Unable to find any enum details data for enums:
-        ${databaseObjects.map((obj) => `'${obj.objectName}'`).join(', ')}`
-    );
-  }
-
-  return queryResult.rows;
-}

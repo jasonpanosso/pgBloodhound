@@ -8,6 +8,18 @@ import introspectEnums from '@/queries/introspectEnums';
 import introspectViews from './queries/introspectViews';
 import introspectRanges from './queries/introspectRanges';
 import introspectDomains from './queries/introspectDomains';
+import introspectCompositeTypes from './queries/introspectCompositeTypes';
+
+// temp
+interface SchemaDetails {
+  tables: Awaited<ReturnType<typeof introspectTables>>;
+  enums: Awaited<ReturnType<typeof introspectEnums>>;
+  views: Awaited<ReturnType<typeof introspectViews>>;
+  materializedViews: Awaited<ReturnType<typeof introspectViews>>;
+  ranges: Awaited<ReturnType<typeof introspectRanges>>;
+  domains: Awaited<ReturnType<typeof introspectDomains>>;
+  compositeTypes: Awaited<ReturnType<typeof introspectCompositeTypes>>;
+}
 
 const introspectDatabase = async (connectionConfig: ClientConfig) => {
   const db = await instantiateDatabaseConnection(connectionConfig);
@@ -17,45 +29,42 @@ const introspectDatabase = async (connectionConfig: ClientConfig) => {
     const schemas = await getSchemaNames(db);
     console.log('Schemas: ', schemas);
 
-    const pgObjects = await getDatabaseObjectsFromSchema(db, ['public']);
+    const result: Record<string, SchemaDetails> = {};
+    for (const schema of schemas) {
+      const pgObjects = await getDatabaseObjectsFromSchema(db, schema);
+      const schemaObjects = pgObjects.filter((obj) => obj.schema === schema);
 
-    console.dir(pgObjects, { depth: 7 });
+      const {
+        tables,
+        enums,
+        views,
+        materializedViews,
+        ranges,
+        domains,
+        compositeTypes,
+      } = sortDatabaseObjectsByType(schemaObjects);
 
-    const {
-      tables,
-      enums,
-      views,
-      materializedViews,
-      ranges,
-      domains,
-      compositeTypes,
-    } = sortDatabaseObjectsByType(pgObjects);
+      result[schema] = {
+        tables: await introspectTables(db, schema, tables),
+        enums: await introspectEnums(db, schema, enums),
+        views: await introspectViews(db, schema, views),
+        materializedViews: await introspectViews(db, schema, materializedViews),
+        ranges: await introspectRanges(db, schema, ranges),
+        domains: await introspectDomains(db, schema, domains),
+        compositeTypes: await introspectCompositeTypes(
+          db,
+          schema,
+          compositeTypes
+        ),
+      };
+    }
 
-    const introspectedTables = await introspectTables(db, tables);
-    console.dir(introspectedTables, { depth: 7 });
-
-    const introspectedEnums = await introspectEnums(db, enums);
-    console.dir(introspectedEnums, { depth: 7 });
-
-    // TODO: add dimensions fix for materialized views
-    const introspectedMaterializedViews = await introspectViews(
-      db,
-      materializedViews
-    );
-    console.dir(introspectedMaterializedViews, { depth: 7 });
-
-    const introspectedViews = await introspectViews(db, views);
-    console.dir(introspectedViews, { depth: 7 });
-
-    const introspectedRanges = await introspectRanges(db, ranges);
-    console.dir(introspectedRanges, { depth: 7 });
-
-    const introspectedDomains = await introspectDomains(db, domains);
-    console.dir(introspectedDomains, { depth: 7 });
+    console.dir(result, { depth: 10 });
   } catch (err) {
     console.error(err);
+    throw err;
   } finally {
-    await db.query('COMMIT');
+    await db.query('ROLLBACK');
     await db.end();
   }
 };

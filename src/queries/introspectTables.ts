@@ -1,100 +1,133 @@
 import type { Client } from 'pg';
-import { generatePairedPgParameters } from '@/utils/queryUtils';
 import type { DatabaseObject } from '@/types/Database';
+import {
+  handleQueryReturnedNoResults,
+  handleSqlQueryError,
+} from '@/utils/errorHandlers';
 
 export default async function introspectTables<
-  T extends (DatabaseObject & { objectType: 'table' })[],
->(db: Client, tables: T) {
-  const tableAndSchemaNames = tables.flatMap((t) => [t.schema, t.objectName]);
-  const pgParameters = generatePairedPgParameters(tables);
+  T extends (DatabaseObject & { objectType: 'table'; schema: K })[],
+  K extends string,
+>(db: Client, schema: K, databaseObjects: T) {
+  if (!databaseObjects.length) {
+    return {};
+  }
 
-  const query = `
+  const tables = databaseObjects.map((t) => t.objectName);
+
+  let queryResult;
+  try {
+    queryResult = await db.query(query, [schema, tables]);
+  } catch (err) {
+    throw handleSqlQueryError(err, schema, 'tables');
+  }
+
+  if (queryResult.rowCount === 0) {
+    throw handleQueryReturnedNoResults(databaseObjects, schema, 'tables');
+  }
+
+  return queryResult.rows;
+}
+
+const query = `
     WITH constraints_details AS (
         SELECT
-            tc.table_schema,
-            tc.table_name,
-            kcu.column_name,
+            ns.nspname AS table_schema,
+            cls.relname AS table_name,
+            attr.attname AS column_name,
             json_agg(
                 json_build_object(
-                    'constraintType', tc.constraint_type,
-                    'foreignKeyReference',
-                    CASE
-                        WHEN tc.constraint_type = 'FOREIGN KEY'
-                            THEN (
-                                SELECT
-                                    concat(
-                                        rc.unique_constraint_schema, '.',
-                                        kcu_ref.table_name, '.', kcu.column_name
-                                    )
-                                FROM
-                                    information_schema.referential_constraints AS rc
-                                INNER JOIN
-                                    information_schema.key_column_usage AS kcu_ref
-                                    ON
-                                        rc.unique_constraint_name
-                                        = kcu_ref.constraint_name
-                                WHERE rc.constraint_name = tc.constraint_name
-                            )
+                    'constraintType', CASE
+                        WHEN con.contype = 'c' THEN 'CHECK'
+                        WHEN con.contype = 'f' THEN 'FOREIGN KEY'
+                        WHEN con.contype = 'p' THEN 'PRIMARY KEY'
+                        WHEN con.contype = 'u' THEN 'UNIQUE'
+                        WHEN con.contype = 't' THEN 'TRIGGER'
+                        WHEN con.contype = 'x' THEN 'EXCLUSION'
+                    END,
+                    'foreignKeyReference', CASE
+                        WHEN con.contype = 'f' THEN (
+                            SELECT
+                                concat(
+                                    refns.nspname, '.',
+                                    refcls.relname, '.', refattr.attname
+                                )
+                            FROM
+                                pg_catalog.pg_constraint AS refcon
+                            INNER JOIN
+                                pg_catalog.pg_class AS refcls
+                                ON refcon.conrelid = refcls.oid
+                            INNER JOIN
+                                pg_catalog.pg_namespace AS refns
+                                ON refcls.relnamespace = refns.oid
+                            INNER JOIN
+                                pg_catalog.pg_attribute AS refattr
+                                ON refattr.attnum = any(refcon.confkey)
+                            WHERE refcon.oid = con.confrelid
+                        )
                     END
                 )
-            ) AS constraints
+            ) FILTER (WHERE con.contype IS NOT NULL) AS constraints
         FROM
-            information_schema.table_constraints AS tc
-        INNER JOIN information_schema.key_column_usage AS kcu
-            ON
-                tc.constraint_name = kcu.constraint_name
-                AND tc.table_schema = kcu.table_schema
-            WHERE
-                (tc.table_schema, tc.table_name) IN (${pgParameters})
+            pg_catalog.pg_class AS cls
+        INNER JOIN pg_catalog.pg_namespace AS ns ON cls.relnamespace = ns.oid
+        INNER JOIN pg_catalog.pg_attribute AS attr ON cls.oid = attr.attrelid
+        LEFT JOIN
+            pg_catalog.pg_constraint AS con
+            ON cls.oid = con.conrelid AND attr.attnum = any(con.conkey)
+        WHERE
+            ns.nspname = $1 AND cls.relname = any($2)
         GROUP BY
-            tc.table_schema, tc.table_name, kcu.column_name
+            ns.nspname, cls.relname, attr.attname
     ),
 
     type_details AS (
         SELECT
-            pg_namespace.nspname AS table_schema,
-            pg_class.relname AS table_name,
-            pg_attribute.attname AS column_name,
-            pg_attribute.attndims AS dimensions,
-            pg_type.typname AS type_name,
+            ns.nspname AS table_schema,
+            cls.relname AS table_name,
+            attr.attname AS column_name,
+            attr.attndims AS dimensions,
+            typ.typname AS type_name,
             CASE
-                WHEN pg_type.typtype = 'c' THEN 'composite'
-                WHEN pg_type.typtype = 'b' THEN 'base'
-                WHEN pg_type.typtype = 'e' THEN 'enum'
-                WHEN pg_type.typtype = 'd' THEN 'domain'
-                WHEN pg_type.typtype = 'r' THEN 'range'
+                WHEN typ.typtype = 'c' THEN 'composite'
+                WHEN typ.typtype = 'b' THEN 'base'
+                WHEN typ.typtype = 'e' THEN 'enum'
+                WHEN typ.typtype = 'd' THEN 'domain'
+                WHEN typ.typtype = 'r' THEN 'range'
             END AS type_category,
-            pg_type.typelem != 0 AND pg_type.typlen = -1 AS is_array
+            typ.typelem != 0 AND typ.typlen = -1 AS is_array
         FROM
-            pg_attribute
-        INNER JOIN pg_type ON pg_attribute.atttypid = pg_type.oid
-        INNER JOIN pg_class ON pg_attribute.attrelid = pg_class.oid
-        INNER JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid
+            pg_catalog.pg_attribute AS attr
+        INNER JOIN pg_catalog.pg_type AS typ ON attr.atttypid = typ.oid
+        INNER JOIN pg_catalog.pg_class AS cls ON attr.attrelid = cls.oid
+        INNER JOIN pg_catalog.pg_namespace AS ns ON cls.relnamespace = ns.oid
         WHERE
-            (pg_namespace.nspname, pg_class.relname) IN (${pgParameters})
+            ns.nspname = $1 AND cls.relname = any($2)
     ),
 
     table_details AS (
         SELECT
-            c.table_schema,
-            c.table_name,
+            ns.nspname AS table_schema,
+            cls.relname AS table_name,
+            attr.attname AS column_name,
             json_build_object(
-                'columnName', c.column_name,
-                'pgType', CASE
-                    WHEN
-                        c.data_type = 'USER-DEFINED'
-                        THEN concat(c.udt_schema, '.', c.udt_name)
-                    ELSE c.data_type
+                'pgType', typ.typname,
+                'columnDefault',
+                pg_catalog.pg_get_expr(attrdef.adbin, attrdef.adrelid),
+                'charMaxLength', CASE
+                    WHEN typ.typlen > 0 THEN typ.typlen
                 END,
-                'columnDefault', c.column_default,
-                'charMaxLength', c.character_maximum_length,
-                'numericPrecision', c.numeric_precision,
-                'isUpdateable',
-                COALESCE (c.is_updatable = 'YES', FALSE),
-                'isNullable',
-                COALESCE (c.is_nullable = 'YES', FALSE),
-                'isIdentity',
-                COALESCE (c.is_identity = 'YES', FALSE),
+                'numericPrecision', CASE
+                    WHEN typ.typname = 'numeric' THEN attr.atttypmod
+                END,
+                'isNullable', NOT attr.attnotnull,
+                'isIdentity', attr.attidentity = 'a' OR attr.attidentity = 'd',
+                'generated', CASE
+                    WHEN attr.attidentity = 'a' THEN 'ALWAYS'
+                    WHEN attr.attidentity IN ('d', 's') THEN 'BY DEFAULT'
+                    WHEN attr.attgenerated != '' THEN 'ALWAYS'
+                    ELSE 'NEVER'
+                END,
                 'typeDetails', td.type_name,
                 'typeCategory', td.type_category,
                 'isArray', td.is_array,
@@ -102,66 +135,46 @@ export default async function introspectTables<
                 'constraints', cd.constraints
             ) AS column_details
         FROM
-            information_schema.columns AS c
+            pg_catalog.pg_attribute AS attr
+        LEFT JOIN
+            pg_catalog.pg_attrdef AS attrdef
+            ON attr.attnum = attrdef.adnum AND attr.attrelid = attrdef.adrelid
+        INNER JOIN pg_catalog.pg_class AS cls ON attr.attrelid = cls.oid
+        INNER JOIN pg_catalog.pg_namespace AS ns ON cls.relnamespace = ns.oid
+        INNER JOIN pg_catalog.pg_type AS typ ON attr.atttypid = typ.oid
         LEFT JOIN
             constraints_details AS cd
             ON
-                c.table_schema = cd.table_schema
-                AND c.table_name = cd.table_name
-                AND c.column_name = cd.column_name
+                ns.nspname = cd.table_schema
+                AND cls.relname = cd.table_name
+                AND attr.attname = cd.column_name
         LEFT JOIN
             type_details AS td
             ON
-                c.table_schema = td.table_schema
-                AND c.table_name = td.table_name
-                AND c.column_name = td.column_name
+                ns.nspname = td.table_schema
+                AND cls.relname = td.table_name
+                AND attr.attname = td.column_name
         WHERE
-            (c.table_schema, c.table_name) IN (${pgParameters})
+            ns.nspname = $1 AND cls.relname = any($2)
     ),
 
-    schema_details AS (
+    table_column_aggregation AS (
         SELECT
-            table_schema,
-            json_object_agg(table_name, column_details) AS tables
-        FROM (
-            SELECT
-                table_schema,
-                table_name,
-                json_object_agg(
-                    column_details ->> 'columnName', column_details
-                ) AS column_details
-            FROM
-                table_details
-            GROUP BY
-                table_schema, table_name
-        ) AS sub_query
+            table_name,
+            json_build_object(
+                'columns',
+                json_object_agg(column_name, column_details)
+            ) AS column_details
+        FROM
+            table_details
         GROUP BY
-            table_schema
+            table_name
+    ),
+
+    multiple_table_aggregation AS (
+        SELECT json_object_agg(table_name, column_details) AS result
+        FROM table_column_aggregation
     )
 
-    SELECT json_object_agg(table_schema, json_build_object('tables', tables)) 
-    AS schemas FROM schema_details;
+    SELECT result FROM multiple_table_aggregation;
   `;
-
-  let queryResult;
-  try {
-    queryResult = await db.query(query, tableAndSchemaNames);
-  } catch (err) {
-    if (err instanceof Error) {
-      throw new Error(`SQL Error while fetching table details: ${err.message}`);
-    } else {
-      throw new Error(
-        `An unknown error occurred while fetching table details: ${String(err)}`
-      );
-    }
-  }
-
-  if (queryResult.rowCount === 0) {
-    throw new Error(
-      `Error introspecting database: Unable to introspect any data for tables:
-        ${tables.map((table) => `'${table.objectName}'`).join(', ')}`
-    );
-  }
-
-  return queryResult.rows;
-}

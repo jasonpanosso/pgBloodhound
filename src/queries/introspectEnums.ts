@@ -1,17 +1,35 @@
 import type { Client } from 'pg';
-import { generatePairedPgParameters } from '@/utils/queryUtils';
 import type { DatabaseObject } from '@/types/Database';
+import {
+  handleQueryReturnedNoResults,
+  handleSqlQueryError,
+} from '@/utils/errorHandlers';
 
 export default async function introspectEnums<
-  T extends (DatabaseObject & { objectType: 'enum' })[],
->(db: Client, databaseObjects: T) {
-  const pgParameters = generatePairedPgParameters(databaseObjects);
-  const enumAndSchemaNames = databaseObjects.flatMap((t) => [
-    t.schema,
-    t.objectName,
-  ]);
+  T extends (DatabaseObject & { objectType: 'enum'; schema: K })[],
+  K extends string,
+>(db: Client, schema: K, databaseObjects: T) {
+  if (!databaseObjects.length) {
+    return {};
+  }
 
-  const query = `
+  const enums = databaseObjects.map((obj) => obj.objectName);
+
+  let queryResult;
+  try {
+    queryResult = await db.query(query, [schema, enums]);
+  } catch (err) {
+    throw handleSqlQueryError(err, schema, 'enums');
+  }
+
+  if (queryResult.rowCount === 0) {
+    throw handleQueryReturnedNoResults(databaseObjects, schema, 'enums');
+  }
+
+  return queryResult.rows;
+}
+
+const query = `
     WITH enum_details AS (
         SELECT 
             n.nspname as schema,
@@ -22,44 +40,15 @@ export default async function introspectEnums<
         JOIN pg_enum e ON t.oid = e.enumtypid
         JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
         WHERE 
-            (n.nspname, t.typname) IN (${pgParameters})
+            n.nspname = $1 AND
+            t.typname = ANY($2)
         GROUP BY 
             schema, enum_type
-    ),
-    enum_details_aggregated AS (
+    )
         SELECT
-            schema,
-            json_object_agg(enum_type, enum_values) AS enums
+            json_object_agg(enum_type, enum_values) AS result
         FROM 
             enum_details
         GROUP BY
-            schema
-    )
-    SELECT 
-        json_object_agg(schema, enums) AS schemas
-    FROM 
-        enum_details_aggregated;
+            schema;
   `;
-
-  let queryResult;
-  try {
-    queryResult = await db.query(query, enumAndSchemaNames);
-  } catch (err) {
-    if (err instanceof Error) {
-      throw new Error(`SQL Error while fetching table details: ${err.message}`);
-    } else {
-      throw new Error(
-        `An unknown error occurred while fetching table details: ${String(err)}`
-      );
-    }
-  }
-
-  if (queryResult.rowCount === 0) {
-    throw new Error(
-      `Error introspecting database: Unable to find any enum details data for enums:
-        ${databaseObjects.map((obj) => `'${obj.objectName}'`).join(', ')}`
-    );
-  }
-
-  return queryResult.rows;
-}

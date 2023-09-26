@@ -1,18 +1,36 @@
 import type { Client } from 'pg';
-import { generatePairedPgParameters } from '@/utils/queryUtils';
 import type { DatabaseObject } from '@/types/Database';
+import {
+  handleQueryReturnedNoResults,
+  handleSqlQueryError,
+} from '@/utils/errorHandlers';
 
 export default async function introspectRanges<
-  T extends (DatabaseObject & { objectType: 'range' })[],
->(db: Client, databaseObjects: T) {
-  const pgParameters = generatePairedPgParameters(databaseObjects);
-  const rangeAndSchemaNames = databaseObjects.flatMap((t) => [
-    t.schema,
-    t.objectName,
-  ]);
+  T extends (DatabaseObject & { objectType: 'range'; schema: K })[],
+  K extends string,
+>(db: Client, schema: K, databaseObjects: T) {
+  if (!databaseObjects.length) {
+    return {};
+  }
 
-  // TODO: actually understand collation/canonical
-  const query = `
+  const ranges = databaseObjects.map((t) => t.objectName);
+
+  let queryResult;
+  try {
+    queryResult = await db.query(query, [schema, ranges]);
+  } catch (err) {
+    throw handleSqlQueryError(err, schema, 'ranges');
+  }
+
+  if (queryResult.rowCount === 0) {
+    throw handleQueryReturnedNoResults(databaseObjects, schema, 'ranges');
+  }
+
+  return queryResult.rows;
+}
+
+// TODO: actually understand collation/canonical
+const query = `
     WITH range_details AS (
         SELECT
             n.nspname AS schema_name,
@@ -30,12 +48,10 @@ export default async function introspectRanges<
         INNER JOIN
             pg_catalog.pg_namespace AS n ON t.typnamespace = n.oid
         WHERE
-            (n.nspname, t.typname) IN (${pgParameters})
-    ),
+            n.nspname = $1 AND t.typname = ANY($2)
+    )
 
-    schema_ranges AS (
         SELECT
-            schema_name,
             json_object_agg(
                 range_name,
                 json_build_object(
@@ -44,41 +60,9 @@ export default async function introspectRanges<
                     'canonicalFunction', canonical_function,
                     'subtypeDiffFunction', subtype_diff_function
                 )
-            ) AS ranges
+            ) AS result
         FROM
             range_details
         GROUP BY
-            schema_name
-    )
-
-    SELECT
-        json_object_agg(
-            schema_name,
-            json_build_object('ranges', ranges)
-        ) AS schemas
-    FROM
-        schema_ranges;
+            schema_name;
   `;
-
-  let queryResult;
-  try {
-    queryResult = await db.query(query, rangeAndSchemaNames);
-  } catch (err) {
-    if (err instanceof Error) {
-      throw new Error(`SQL Error while fetching table details: ${err.message}`);
-    } else {
-      throw new Error(
-        `An unknown error occurred while fetching table details: ${String(err)}`
-      );
-    }
-  }
-
-  if (queryResult.rowCount === 0) {
-    throw new Error(
-      `Error introspecting database: Unable to find any enum details data for enums:
-        ${databaseObjects.map((obj) => `'${obj.objectName}'`).join(', ')}`
-    );
-  }
-
-  return queryResult.rows;
-}

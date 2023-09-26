@@ -27,7 +27,6 @@ export type TableDetails = Record<string, ColumnDetails[]>;
 export type ColumnGenerated = 'ALWAYS' | 'BY DEFAULT' | 'NEVER';
 
 export interface ColumnDetails {
-  columnName: string;
   pgType: string;
   columnDefault: string | null;
   charMaxLength: number | null;
@@ -37,7 +36,7 @@ export interface ColumnDetails {
   generated: ColumnGenerated;
   isNullable: boolean;
   isIdentity: boolean;
-  isUpdateable: boolean;
   isArray: boolean;
+  dimensions: number;
   constrants: { constraintType: string; foreignReference: string }[] | null;
 }
