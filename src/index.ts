@@ -7,6 +7,7 @@ import introspectTables from '@/queries/introspectTables';
 import introspectEnums from '@/queries/introspectEnums';
 import introspectViews from './queries/introspectViews';
 import introspectRanges from './queries/introspectRanges';
+import introspectDomains from './queries/introspectDomains';
 
 const introspectDatabase = async (connectionConfig: ClientConfig) => {
   const db = await instantiateDatabaseConnection(connectionConfig);
@@ -48,6 +49,9 @@ const introspectDatabase = async (connectionConfig: ClientConfig) => {
 
     const introspectedRanges = await introspectRanges(db, ranges);
     console.dir(introspectedRanges, { depth: 7 });
+
+    const introspectedDomains = await introspectDomains(db, domains);
+    console.dir(introspectedDomains, { depth: 7 });
   } catch (err) {
     console.error(err);
   } finally {
