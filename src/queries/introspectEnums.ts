@@ -1,9 +1,12 @@
 import type { Client } from 'pg';
 import type { DatabaseObject } from '@/types/Database';
 import {
+  handleQueryReturnedMoreThanOneResult,
   handleQueryReturnedNoResults,
   handleSqlQueryError,
 } from '@/utils/errorHandlers';
+import { z } from 'zod';
+import { enumValidator } from '@/types/ZodValidators';
 
 export default async function introspectEnums<
   T extends (DatabaseObject & { objectType: 'enum' })[],
@@ -23,9 +26,17 @@ export default async function introspectEnums<
 
   if (queryResult.rowCount === 0) {
     throw handleQueryReturnedNoResults(databaseObjects, schema, 'enums');
+  } else if (queryResult.rows.length !== 1) {
+    throw handleQueryReturnedMoreThanOneResult(
+      databaseObjects,
+      schema,
+      'enums'
+    );
   }
 
-  return queryResult.rows;
+  return z
+    .object({ result: z.record(z.array(z.string())) })
+    .parse(queryResult.rows[0]).result;
 }
 
 const query = `
