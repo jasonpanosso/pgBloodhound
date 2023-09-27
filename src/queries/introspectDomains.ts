@@ -29,32 +29,40 @@ export default async function introspectDomains<
 }
 
 const query = `
-    WITH domain_details AS (
-        SELECT
-            n.nspname AS schema_name,
-            d.typname AS domain_name,
-            pg_catalog.format_type(d.typbasetype, d.typtypmod) AS base_type,
-            d.typdefault AS default_value,
-            d.typcollation::regnamespace::text || '.' || d.typcollation::regtype::text AS domain_collation
-        FROM
-            pg_catalog.pg_type AS d
-        INNER JOIN
-            pg_catalog.pg_namespace AS n ON d.typnamespace = n.oid
-        WHERE
-            d.typtype = 'd'
-            AND n.nspname = $1 AND d.typname = ANY($2)
-    )
-        SELECT
-              json_object_agg(
-                domain_name,
-                json_build_object(
-                    'baseType', base_type,
-                    'defaultValue', default_value,
-                    'collation', domain_collation
-                )
-              ) AS result
-        FROM
-            domain_details
-        GROUP BY
-            schema_name;
+WITH domain_details AS (
+    SELECT
+        d.typname AS domain_name,
+        d.typdefault AS default_value,
+        pg_catalog.format_type(d.typbasetype, d.typtypmod) AS base_type,
+        array_agg(dc.conname) AS constraint_names,
+        array_agg(pg_catalog.pg_get_constraintdef(dc.oid, true)) AS constraint_definitions
+    FROM
+        pg_catalog.pg_type AS d
+    INNER JOIN
+        pg_catalog.pg_namespace AS n ON d.typnamespace = n.oid
+    LEFT JOIN 
+        pg_collation c ON d.typcollation = c.oid
+    LEFT JOIN
+        pg_constraint dc ON dc.contypid = d.oid
+    WHERE
+        d.typtype = 'd'
+        AND n.nspname = $1 AND d.typname = ANY($2)
+    GROUP BY
+        domain_name,
+        default_value,
+        base_type
+)
+SELECT
+      json_object_agg(
+        domain_name,
+        json_build_object(
+            'baseType', base_type,
+            'defaultValue', default_value,
+            'constraints', jsonb_object(constraint_names, constraint_definitions)
+        )
+      ) AS result
+FROM
+    domain_details
+GROUP BY
+    domain_name;
   `;
