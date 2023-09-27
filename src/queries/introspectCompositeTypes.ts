@@ -57,8 +57,11 @@ const query = `
         WHERE
             t.typtype = 'c'
             AND n.nspname = $1 AND t.typname = ANY($2)
-    )
-    SELECT
+    ),
+
+    multiple_composite_type_aggregation AS (
+        SELECT
+            composite_type_name,
             json_object_agg(
                 field_name,
                 json_build_object(
@@ -69,9 +72,15 @@ const query = `
                     'typeDetails', type_details,
                     'typeCategory', type_category
                 )
-            ) AS result
+            ) AS composite_type_aggregation
+        FROM
+            composite_type_details
+        GROUP BY
+            schema_name, composite_type_name
+    )
+
+    SELECT
+        json_object_agg(composite_type_name, composite_type_aggregation) AS result
     FROM
-        composite_type_details
-    GROUP BY
-        schema_name, composite_type_name;
+        multiple_composite_type_aggregation;
 `;
