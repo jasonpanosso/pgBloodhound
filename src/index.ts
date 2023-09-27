@@ -11,8 +11,6 @@ import introspectRanges from './queries/introspectRanges';
 import introspectDomains from './queries/introspectDomains';
 import introspectCompositeTypes from './queries/introspectCompositeTypes';
 
-// temp
-
 const introspectDatabase = async (connectionConfig: ClientConfig) => {
   const db = await instantiateDatabaseConnection(connectionConfig);
   try {

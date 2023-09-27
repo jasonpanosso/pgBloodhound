@@ -47,7 +47,7 @@ export type SchemaDetails = {
   enums: Record<string, string[]>;
   ranges: unknown;
   domains: DomainDetails;
-  compositeTypes: Record<string, CompositeTypeDetails>;
+  compositeTypes: Record<string, Record<string, CompositeTypeDetails>>;
 };
 
 export interface DomainDetails {
