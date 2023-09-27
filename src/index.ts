@@ -1,5 +1,6 @@
 import type { DatabaseObject, DatabaseObjectType } from '@/types/Database';
 import type { ClientConfig } from 'pg';
+import type { SchemaDetails } from '@/types/Database';
 import getSchemaNames from '@/queries/getSchemaNames';
 import getDatabaseObjectsFromSchema from '@/queries/getDatabaseObjects';
 import instantiateDatabaseConnection from '@/database';
@@ -11,15 +12,6 @@ import introspectDomains from './queries/introspectDomains';
 import introspectCompositeTypes from './queries/introspectCompositeTypes';
 
 // temp
-interface SchemaDetails {
-  tables: Awaited<ReturnType<typeof introspectTables>>;
-  enums: Awaited<ReturnType<typeof introspectEnums>>;
-  views: Awaited<ReturnType<typeof introspectViews>>;
-  materializedViews: Awaited<ReturnType<typeof introspectViews>>;
-  ranges: Awaited<ReturnType<typeof introspectRanges>>;
-  domains: Awaited<ReturnType<typeof introspectDomains>>;
-  compositeTypes: Awaited<ReturnType<typeof introspectCompositeTypes>>;
-}
 
 const introspectDatabase = async (connectionConfig: ClientConfig) => {
   const db = await instantiateDatabaseConnection(connectionConfig);
@@ -30,7 +22,7 @@ const introspectDatabase = async (connectionConfig: ClientConfig) => {
     console.log('Schemas: ', schemas);
 
     const result: Record<string, SchemaDetails> = {};
-    for (const schema of schemas) {
+    for (const schema of ['public']) {
       const pgObjects = await getDatabaseObjectsFromSchema(db, schema);
 
       const {
@@ -60,7 +52,6 @@ const introspectDatabase = async (connectionConfig: ClientConfig) => {
 
     console.dir(result, { depth: 10 });
   } catch (err) {
-    console.error(err);
     throw err;
   } finally {
     await db.query('ROLLBACK');

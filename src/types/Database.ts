@@ -17,9 +17,11 @@ export interface DatabaseObject {
   description: string | null;
 }
 
-export type ColumnGenerated = 'ALWAYS' | 'BY DEFAULT' | 'NEVER';
+export const COLUMN_GENERATED = ['ALWAYS', 'BY DEFAULT', 'NEVER'] as const;
 
-export type Constraint = {
+export type ColumnGenerated = (typeof COLUMN_GENERATED)[number];
+
+export type ColumnConstraint = {
   checkCondition: string | null;
   constraintType: ConstraintType;
   foreignKeyReferences:
@@ -27,13 +29,16 @@ export type Constraint = {
     | null;
 };
 
-export type ConstraintType =
-  | 'PRIMARY_KEY'
-  | 'FOREIGN_KEY'
-  | 'CHECK'
-  | 'UNIQUE'
-  | 'TRIGGER'
-  | 'EXCLUSION';
+export const CONSTRAINT_TYPE = [
+  'PRIMARY_KEY',
+  'FOREIGN_KEY',
+  'CHECK',
+  'UNIQUE',
+  'TRIGGER',
+  'EXCLUSION',
+] as const;
+
+export type ConstraintType = (typeof CONSTRAINT_TYPE)[number];
 
 export type SchemaDetails = {
   tables: Record<string, TableDetails>;
@@ -61,9 +66,9 @@ export interface CompositeTypeDetails {
 }
 
 export interface TableDetails {
-  columns: Record<string, ColumnDetails>;
-  triggers: unknown;
-  constraints: unknown;
+  columns: Record<string, ColumnDetails> | undefined;
+  // triggers: unknown;
+  // constraints: unknown;
 }
 
 export interface ColumnDetails {
@@ -78,5 +83,5 @@ export interface ColumnDetails {
   isIdentity: boolean;
   isArray: boolean;
   dimensions: number;
-  constraints: Record<string, Constraint>;
+  constraints: Record<string, ColumnConstraint> | null;
 }
