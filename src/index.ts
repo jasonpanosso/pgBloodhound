@@ -20,7 +20,7 @@ const introspectDatabase = async (connectionConfig: ClientConfig) => {
     console.log('Schemas: ', schemas);
 
     const result: Record<string, SchemaDetails> = {};
-    for (const schema of ['public']) {
+    for (const schema of schemas) {
       const pgObjects = await getDatabaseObjectsFromSchema(db, schema);
 
       const {
@@ -52,7 +52,7 @@ const introspectDatabase = async (connectionConfig: ClientConfig) => {
   } catch (err) {
     throw err;
   } finally {
-    await db.query('ROLLBACK');
+    await db.query('ROLLBACK'); // assure no changes to the database
     await db.end();
   }
 };

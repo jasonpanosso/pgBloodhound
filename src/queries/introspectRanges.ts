@@ -1,9 +1,12 @@
 import type { Client } from 'pg';
 import type { DatabaseObject } from '@/types/Database';
 import {
+  handleQueryReturnedMoreThanOneResult,
   handleQueryReturnedNoResults,
   handleSqlQueryError,
 } from '@/utils/errorHandlers';
+import { z } from 'zod';
+import { rangeValidator } from '@/types/ZodValidators';
 
 export default async function introspectRanges<
   T extends (DatabaseObject & { objectType: 'range' })[],
@@ -23,9 +26,17 @@ export default async function introspectRanges<
 
   if (queryResult.rowCount === 0) {
     throw handleQueryReturnedNoResults(databaseObjects, schema, 'ranges');
+  } else if (queryResult.rows.length !== 1) {
+    throw handleQueryReturnedMoreThanOneResult(
+      databaseObjects,
+      schema,
+      'ranges'
+    );
   }
 
-  return queryResult.rows;
+  return z
+    .object({ result: z.record(rangeValidator) })
+    .parse(queryResult.rows[0]).result;
 }
 
 // TODO: actually understand collation/canonical
@@ -49,18 +60,16 @@ const query = `
             n.nspname = $1 AND t.typname = ANY($2)
     )
 
-        SELECT
-            json_object_agg(
-                range_name,
-                json_build_object(
-                    'subtype', subtype,
-                    'collation', range_collation,
-                    'canonicalFunction', canonical_function,
-                    'subtypeDiffFunction', subtype_diff_function
-                )
-            ) AS result
-        FROM
-            range_details
-        GROUP BY
-            range_name;
+    SELECT
+        json_object_agg(
+            range_name,
+            json_build_object(
+                'subtype', subtype,
+                'collation', range_collation,
+                'canonicalFunction', canonical_function,
+                'subtypeDiffFunction', subtype_diff_function
+            )
+        ) AS result
+    FROM
+        range_details;
   `;

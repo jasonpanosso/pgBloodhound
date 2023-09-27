@@ -1,9 +1,12 @@
 import type { Client } from 'pg';
 import type { DatabaseObject } from '@/types/Database';
 import {
+  handleQueryReturnedMoreThanOneResult,
   handleQueryReturnedNoResults,
   handleSqlQueryError,
 } from '@/utils/errorHandlers';
+import { z } from 'zod';
+import { domainValidator } from '@/types/ZodValidators';
 
 export default async function introspectDomains<
   T extends (DatabaseObject & { objectType: 'domain' })[],
@@ -23,9 +26,17 @@ export default async function introspectDomains<
 
   if (queryResult.rowCount === 0) {
     throw handleQueryReturnedNoResults(databaseObjects, schema, 'domains');
+  } else if (queryResult.rows.length !== 1) {
+    throw handleQueryReturnedMoreThanOneResult(
+      databaseObjects,
+      schema,
+      'domains'
+    );
   }
 
-  return queryResult.rows;
+  return z
+    .object({ result: z.record(domainValidator) })
+    .parse(queryResult.rows[0]).result;
 }
 
 const query = `
@@ -52,6 +63,7 @@ WITH domain_details AS (
         default_value,
         base_type
 )
+
 SELECT
       json_object_agg(
         domain_name,
@@ -62,7 +74,5 @@ SELECT
         )
       ) AS result
 FROM
-    domain_details
-GROUP BY
-    domain_name;
+    domain_details;
   `;

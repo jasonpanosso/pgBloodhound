@@ -10,24 +10,9 @@ export const DATABASE_OBJECT_TYPES = [
 
 export type DatabaseObjectType = (typeof DATABASE_OBJECT_TYPES)[number];
 
-export interface DatabaseObject {
-  objectName: string;
-  schema: string;
-  objectType: DatabaseObjectType;
-  description: string | null;
-}
-
 export const COLUMN_GENERATED = ['ALWAYS', 'BY DEFAULT', 'NEVER'] as const;
 
 export type ColumnGenerated = (typeof COLUMN_GENERATED)[number];
-
-export type ColumnConstraint = {
-  checkCondition: string | null;
-  constraintType: ConstraintType;
-  foreignKeyReferences:
-    | { schema: string; table: string; column: string }[]
-    | null;
-};
 
 export const CONSTRAINT_TYPE = [
   'PRIMARY_KEY',
@@ -38,15 +23,30 @@ export const CONSTRAINT_TYPE = [
   'EXCLUSION',
 ] as const;
 
+export interface DatabaseObject {
+  objectName: string;
+  schema: string;
+  objectType: DatabaseObjectType;
+  description: string | null;
+}
+
 export type ConstraintType = (typeof CONSTRAINT_TYPE)[number];
+
+export type ColumnConstraint = {
+  checkCondition: string | null;
+  constraintType: ConstraintType;
+  foreignKeyReferences:
+    | { schema: string; table: string; column: string }[]
+    | null;
+};
 
 export type SchemaDetails = {
   tables: Record<string, TableDetails>;
-  views: Record<string, TableDetails>;
-  materializedViews: Record<string, TableDetails>;
+  views: Record<string, ViewDetails>;
+  materializedViews: Record<string, ViewDetails>;
   enums: Record<string, string[]>;
   ranges: unknown;
-  domains: DomainDetails;
+  domains: Record<string, DomainDetails>;
   compositeTypes: Record<string, Record<string, CompositeTypeDetails>>;
 };
 
@@ -56,6 +56,14 @@ export interface DomainDetails {
   constraints: Record<string, string>;
 }
 
+// TODO: how tf do ranges work?
+export interface RangeDetails {
+  subtype: string;
+  collation: string;
+  canonicalFunction: string;
+  subtypeDiffFunction: string;
+}
+
 export interface CompositeTypeDetails {
   pgType: string;
   isNullable: boolean;
@@ -63,6 +71,12 @@ export interface CompositeTypeDetails {
   dimensions: number;
   typeDetails: string;
   typeCategory: string;
+}
+
+export interface ViewDetails {
+  columns: Record<string, ColumnDetails | undefined>;
+  // triggers: unknown;
+  // constraints: unknown;
 }
 
 export interface TableDetails {

@@ -6,6 +6,9 @@ import {
   type ColumnConstraint,
   type TableDetails,
   type CompositeTypeDetails,
+  type ViewDetails,
+  type DomainDetails,
+  type RangeDetails,
 } from './Database';
 
 export type toZod<T> = z.ZodObject<{
@@ -42,6 +45,10 @@ export const tableValidator: toZod<TableDetails> = z.object({
   columns: z.record(columnsValidator.optional()),
 });
 
+export const viewValidator: toZod<ViewDetails> = z.object({
+  columns: z.record(columnsValidator.optional()),
+});
+
 export const compositeTypeValidator: toZod<CompositeTypeDetails> = z.object({
   pgType: z.string(),
   isNullable: z.boolean(),
@@ -49,4 +56,17 @@ export const compositeTypeValidator: toZod<CompositeTypeDetails> = z.object({
   dimensions: z.number(),
   typeCategory: z.string(),
   typeDetails: z.string(),
+});
+
+export const domainValidator: toZod<DomainDetails> = z.object({
+  pgType: z.string(),
+  defaultValue: z.string().nullable(),
+  constraints: z.record(z.string()),
+});
+
+export const rangeValidator: toZod<RangeDetails> = z.object({
+  subtype: z.string(),
+  collation: z.string(),
+  canonicalFunction: z.string(),
+  subtypeDiffFunction: z.string(),
 });
