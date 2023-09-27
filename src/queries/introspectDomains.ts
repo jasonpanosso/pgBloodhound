@@ -56,7 +56,7 @@ SELECT
       json_object_agg(
         domain_name,
         json_build_object(
-            'baseType', base_type,
+            'pgType', base_type,
             'defaultValue', default_value,
             'constraints', jsonb_object(constraint_names, constraint_definitions)
         )

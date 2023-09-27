@@ -46,7 +46,5 @@ const query = `
         SELECT
             json_object_agg(enum_type, enum_values) AS result
         FROM 
-            enum_details
-        GROUP BY
-            enum_type;
+            enum_details;
   `;
