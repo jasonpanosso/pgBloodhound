@@ -6,9 +6,8 @@ import {
 } from '@/utils/errorHandlers';
 
 export default async function introspectTables<
-  T extends (DatabaseObject & { objectType: 'table'; schema: K })[],
-  K extends string,
->(db: Client, schema: K, databaseObjects: T) {
+  T extends (DatabaseObject & { objectType: 'table' })[],
+>(db: Client, schema: string, databaseObjects: T) {
   if (!databaseObjects.length) {
     return {};
   }

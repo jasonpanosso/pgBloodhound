@@ -32,7 +32,6 @@ const introspectDatabase = async (connectionConfig: ClientConfig) => {
     const result: Record<string, SchemaDetails> = {};
     for (const schema of schemas) {
       const pgObjects = await getDatabaseObjectsFromSchema(db, schema);
-      const schemaObjects = pgObjects.filter((obj) => obj.schema === schema);
 
       const {
         tables,
@@ -42,7 +41,7 @@ const introspectDatabase = async (connectionConfig: ClientConfig) => {
         ranges,
         domains,
         compositeTypes,
-      } = sortDatabaseObjectsByType(schemaObjects);
+      } = sortDatabaseObjectsByType(pgObjects);
 
       result[schema] = {
         tables: await introspectTables(db, schema, tables),

@@ -6,12 +6,8 @@ import {
 } from '@/utils/errorHandlers';
 
 export default async function introspectViews<
-  T extends (DatabaseObject & {
-    objectType: 'view' | 'materializedView';
-    schema: K;
-  })[],
-  K extends string,
->(db: Client, schema: K, databaseObjects: T) {
+  T extends (DatabaseObject & { objectType: 'view' | 'materializedView' })[],
+>(db: Client, schema: string, databaseObjects: T) {
   if (!databaseObjects.length) {
     return {};
   }
