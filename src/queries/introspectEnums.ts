@@ -31,7 +31,6 @@ export default async function introspectEnums<
 const query = `
     WITH enum_details AS (
         SELECT 
-            n.nspname as schema,
             t.typname as enum_type,
             array_agg(e.enumlabel ORDER BY e.enumsortorder) as enum_values
         FROM 
@@ -42,12 +41,12 @@ const query = `
             n.nspname = $1 AND
             t.typname = ANY($2)
         GROUP BY 
-            schema, enum_type
+            enum_type
     )
         SELECT
             json_object_agg(enum_type, enum_values) AS result
         FROM 
             enum_details
         GROUP BY
-            schema;
+            enum_type;
   `;

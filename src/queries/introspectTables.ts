@@ -31,7 +31,6 @@ export default async function introspectTables<
 const query = `
     WITH constraints_details AS (
         SELECT
-            ns.nspname AS table_schema,
             cls.relname AS table_name,
             attr.attname AS column_name,
             json_agg(
@@ -82,7 +81,6 @@ const query = `
 
     type_details AS (
         SELECT
-            ns.nspname AS table_schema,
             cls.relname AS table_name,
             attr.attname AS column_name,
             attr.attndims AS dimensions,
@@ -106,7 +104,6 @@ const query = `
 
     table_details AS (
         SELECT
-            ns.nspname AS table_schema,
             cls.relname AS table_name,
             attr.attname AS column_name,
             json_build_object(
@@ -144,14 +141,12 @@ const query = `
         LEFT JOIN
             constraints_details AS cd
             ON
-                ns.nspname = cd.table_schema
-                AND cls.relname = cd.table_name
+                cls.relname = cd.table_name
                 AND attr.attname = cd.column_name
         LEFT JOIN
             type_details AS td
             ON
-                ns.nspname = td.table_schema
-                AND cls.relname = td.table_name
+                cls.relname = td.table_name
                 AND attr.attname = td.column_name
         WHERE
             ns.nspname = $1 AND cls.relname = any($2)

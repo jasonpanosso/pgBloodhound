@@ -32,7 +32,6 @@ export default async function introspectRanges<
 const query = `
     WITH range_details AS (
         SELECT
-            n.nspname AS schema_name,
             t.typname AS range_name,
             r.rngcanonical::regproc::text AS canonical_function,
             r.rngsubdiff::regproc::text AS subtype_diff_function,
@@ -63,5 +62,5 @@ const query = `
         FROM
             range_details
         GROUP BY
-            schema_name;
+            range_name;
   `;

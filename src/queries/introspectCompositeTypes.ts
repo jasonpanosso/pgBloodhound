@@ -35,7 +35,6 @@ export default async function introspectCompositeTypes<
 const query = `
     WITH composite_type_details AS (
         SELECT
-            n.nspname AS schema_name,
             t.typname AS composite_type_name,
             a.attname AS field_name,
             format_type(a.atttypid, a.atttypmod) AS field_type,
@@ -76,7 +75,7 @@ const query = `
         FROM
             composite_type_details
         GROUP BY
-            schema_name, composite_type_name
+            composite_type_name
     )
 
     SELECT
