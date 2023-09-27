@@ -29,3 +29,15 @@ export function handleQueryReturnedNoResults(
       .join(', ')}`
   );
 }
+
+export function handleQueryReturnedMoreThanOneResult(
+  databaseObjects: DatabaseObject[],
+  schema: string,
+  introspectedType: string
+) {
+  throw new Error(
+    `Received too many rows while introspecting ${introspectedType}: ${databaseObjects
+      .map((obj) => `'${schema}.${obj.objectName}'`)
+      .join(', ')}`
+  );
+}

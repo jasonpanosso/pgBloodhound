@@ -1,9 +1,12 @@
 import type { Client } from 'pg';
 import type { DatabaseObject } from '@/types/Database';
 import {
+  handleQueryReturnedMoreThanOneResult,
   handleQueryReturnedNoResults,
   handleSqlQueryError,
 } from '@/utils/errorHandlers';
+import { tableValidator } from '@/types/ZodValidators';
+import { z } from 'zod';
 
 export default async function introspectTables<
   T extends (DatabaseObject & { objectType: 'table' })[],
@@ -21,11 +24,20 @@ export default async function introspectTables<
     throw handleSqlQueryError(err, schema, 'tables');
   }
 
-  if (queryResult.rowCount === 0) {
+  if (queryResult.rows.length === 0) {
     throw handleQueryReturnedNoResults(databaseObjects, schema, 'tables');
+  } else if (queryResult.rows.length !== 1) {
+    throw handleQueryReturnedMoreThanOneResult(
+      databaseObjects,
+      schema,
+      'tables'
+    );
   }
 
-  return queryResult.rows;
+  return z
+    .object({ result: z.record(tableValidator.strict()) })
+    .strict()
+    .parse(queryResult.rows[0]).result;
 }
 
 const query = `
