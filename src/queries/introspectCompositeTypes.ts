@@ -1,9 +1,12 @@
 import type { Client } from 'pg';
 import type { DatabaseObject } from '@/types/Database';
 import {
+  handleQueryReturnedMoreThanOneResult,
   handleQueryReturnedNoResults,
   handleSqlQueryError,
 } from '@/utils/errorHandlers';
+import { z } from 'zod';
+import { compositeTypeValidator } from '@/types/ZodValidators';
 
 export default async function introspectCompositeTypes<
   T extends (DatabaseObject & { objectType: 'compositeType' })[],
@@ -27,9 +30,17 @@ export default async function introspectCompositeTypes<
       schema,
       'composite types'
     );
+  } else if (queryResult.rows.length !== 1) {
+    throw handleQueryReturnedMoreThanOneResult(
+      databaseObjects,
+      schema,
+      'composite types'
+    );
   }
 
-  return queryResult.rows;
+  return z
+    .object({ result: z.record(z.record(compositeTypeValidator)) })
+    .parse(queryResult.rows[0]).result;
 }
 
 const query = `

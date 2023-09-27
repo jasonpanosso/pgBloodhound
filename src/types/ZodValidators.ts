@@ -5,18 +5,13 @@ import {
   type ColumnDetails,
   type ColumnConstraint,
   type TableDetails,
+  type CompositeTypeDetails,
 } from './Database';
 
 export type toZod<T> = z.ZodObject<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [K in keyof T]: z.ZodType<T[K], any>;
 }>;
-
-const emptyObjectSchema = z.object({}).strict();
-const isEmpty = (obj: object): boolean => {
-  const result = emptyObjectSchema.safeParse(obj);
-  return result.success;
-};
 
 export const columnConstraitsValidator: toZod<ColumnConstraint> = z.object({
   checkCondition: z.string().nullable(),
@@ -44,5 +39,14 @@ export const columnsValidator: toZod<ColumnDetails> = z.object({
 });
 
 export const tableValidator: toZod<TableDetails> = z.object({
-  columns: z.record(columnsValidator).optional(),
+  columns: z.record(columnsValidator.optional()),
+});
+
+export const compositeTypeValidator: toZod<CompositeTypeDetails> = z.object({
+  pgType: z.string(),
+  isNullable: z.boolean(),
+  isArray: z.boolean(),
+  dimensions: z.number(),
+  typeCategory: z.string(),
+  typeDetails: z.string(),
 });
