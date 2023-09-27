@@ -33,50 +33,49 @@ const query = `
         SELECT
             cls.relname AS table_name,
             attr.attname AS column_name,
-            json_agg(
-                json_build_object(
+            jsonb_object_agg(
+                con.conname,
+                jsonb_build_object(
+                    'checkCondition', CASE
+                        WHEN con.contype = 'c' THEN pg_get_constraintdef(con.oid)
+                    END,
                     'constraintType', CASE
                         WHEN con.contype = 'c' THEN 'CHECK'
-                        WHEN con.contype = 'f' THEN 'FOREIGN KEY'
-                        WHEN con.contype = 'p' THEN 'PRIMARY KEY'
+                        WHEN con.contype = 'f' THEN 'FOREIGN_KEY'
+                        WHEN con.contype = 'p' THEN 'PRIMARY_KEY'
                         WHEN con.contype = 'u' THEN 'UNIQUE'
                         WHEN con.contype = 't' THEN 'TRIGGER'
                         WHEN con.contype = 'x' THEN 'EXCLUSION'
                     END,
-                    'foreignKeyReference', CASE
+                    'foreignKeyReferences', CASE
                         WHEN con.contype = 'f' THEN (
-                            SELECT
-                                concat(
-                                    refns.nspname, '.',
-                                    refcls.relname, '.', refattr.attname
+                            SELECT jsonb_agg(
+                                jsonb_build_object(
+                                    'schema', refns.nspname,
+                                    'table', refcls.relname,
+                                    'column', refattr.attname
                                 )
+                            )
                             FROM
-                                pg_catalog.pg_constraint AS refcon
-                            INNER JOIN
-                                pg_catalog.pg_class AS refcls
-                                ON refcon.conrelid = refcls.oid
-                            INNER JOIN
-                                pg_catalog.pg_namespace AS refns
-                                ON refcls.relnamespace = refns.oid
-                            INNER JOIN
                                 pg_catalog.pg_attribute AS refattr
-                                ON refattr.attnum = any(refcon.confkey)
-                            WHERE refcon.oid = con.confrelid
+                            INNER JOIN pg_catalog.pg_class AS refcls ON refattr.attrelid = refcls.oid
+                            INNER JOIN pg_catalog.pg_namespace AS refns ON refcls.relnamespace = refns.oid
+                            WHERE 
+                                refattr.attnum = ANY(con.confkey) AND refcls.oid = con.confrelid
                         )
                     END
                 )
-            ) FILTER (WHERE con.contype IS NOT NULL) AS constraints
+            )  FILTER (WHERE con.contype IS NOT NULL) AS constraints_aggregated
         FROM
-            pg_catalog.pg_class AS cls
+            pg_catalog.pg_attribute AS attr
+        INNER JOIN pg_catalog.pg_class AS cls ON attr.attrelid = cls.oid
+        INNER JOIN pg_catalog.pg_constraint AS con 
+            ON attr.attnum = ANY(con.conkey) AND con.conrelid = cls.oid
         INNER JOIN pg_catalog.pg_namespace AS ns ON cls.relnamespace = ns.oid
-        INNER JOIN pg_catalog.pg_attribute AS attr ON cls.oid = attr.attrelid
-        LEFT JOIN
-            pg_catalog.pg_constraint AS con
-            ON cls.oid = con.conrelid AND attr.attnum = any(con.conkey)
         WHERE
-            ns.nspname = $1 AND cls.relname = any($2)
+            ns.nspname = $1 AND cls.relname = any($2) AND cls.relkind = 'r'
         GROUP BY
-            ns.nspname, cls.relname, attr.attname
+            cls.relname, attr.attname
     ),
 
     type_details AS (
@@ -128,7 +127,7 @@ const query = `
                 'typeCategory', td.type_category,
                 'isArray', td.is_array,
                 'dimensions', td.dimensions,
-                'constraints', cd.constraints
+                'constraints', cd.constraints_aggregated
             ) AS column_details
         FROM
             pg_catalog.pg_attribute AS attr
@@ -138,11 +137,12 @@ const query = `
         INNER JOIN pg_catalog.pg_class AS cls ON attr.attrelid = cls.oid
         INNER JOIN pg_catalog.pg_namespace AS ns ON cls.relnamespace = ns.oid
         INNER JOIN pg_catalog.pg_type AS typ ON attr.atttypid = typ.oid
-        LEFT JOIN
-            constraints_details AS cd
-            ON
-                cls.relname = cd.table_name
-                AND attr.attname = cd.column_name
+        LEFT JOIN (
+            SELECT * FROM constraints_details
+        ) AS cd
+        ON
+            cls.relname = cd.table_name
+            AND attr.attname = cd.column_name
         LEFT JOIN
             type_details AS td
             ON
@@ -150,6 +150,7 @@ const query = `
                 AND attr.attname = td.column_name
         WHERE
             ns.nspname = $1 AND cls.relname = any($2)
+            AND attr.attnum > 0 
     ),
 
     table_column_aggregation AS (
