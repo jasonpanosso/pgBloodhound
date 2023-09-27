@@ -17,14 +17,54 @@ export interface DatabaseObject {
   description: string | null;
 }
 
-export interface SchemaDetails {
-  schema: string;
-  tables: TableDetails;
+export type ColumnGenerated = 'ALWAYS' | 'BY DEFAULT' | 'NEVER';
+
+export type Constraint = {
+  checkCondition: string | null;
+  constraintType: ConstraintType;
+  foreignKeyReferences:
+    | { schema: string; table: string; column: string }[]
+    | null;
+};
+
+export type ConstraintType =
+  | 'PRIMARY_KEY'
+  | 'FOREIGN_KEY'
+  | 'CHECK'
+  | 'UNIQUE'
+  | 'TRIGGER'
+  | 'EXCLUSION';
+
+export type SchemaDetails = {
+  tables: Record<string, TableDetails>;
+  views: Record<string, TableDetails>;
+  materializedViews: Record<string, TableDetails>;
+  enums: Record<string, string[]>;
+  ranges: unknown;
+  domains: DomainDetails;
+  compositeTypes: CompositeTypeDetails;
+};
+
+export interface DomainDetails {
+  pgType: string;
+  defaultValue: string | null;
+  constraints: Record<string, string>;
 }
 
-export type TableDetails = Record<string, ColumnDetails[]>;
+export interface CompositeTypeDetails {
+  pgType: string;
+  isNullable: boolean;
+  isArray: boolean;
+  dimensions: number;
+  typeDetails: string;
+  typeCategory: string;
+}
 
-export type ColumnGenerated = 'ALWAYS' | 'BY DEFAULT' | 'NEVER';
+export interface TableDetails {
+  columns: Record<string, ColumnDetails>;
+  triggers: unknown;
+  constraints: unknown;
+}
 
 export interface ColumnDetails {
   pgType: string;
@@ -38,5 +78,5 @@ export interface ColumnDetails {
   isIdentity: boolean;
   isArray: boolean;
   dimensions: number;
-  constrants: { constraintType: string; foreignReference: string }[] | null;
+  constraints: Record<string, Constraint>;
 }
