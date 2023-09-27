@@ -71,7 +71,6 @@ const query = `
                     'columnName', column_name,
                     'pgType', pg_type,
                     'isNullable', is_nullable,
-                    'isUpdateable', FALSE,
                     'isIdentity', FALSE,
                     'typeDetails', pg_type,
                     'typeCategory', 'base',
