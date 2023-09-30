@@ -1,3 +1,4 @@
+-- TODO: allow users to ignore namespaces
 SELECT nspname FROM pg_catalog.pg_namespace
 WHERE
     nspname != 'information_schema'

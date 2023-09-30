@@ -4,8 +4,8 @@ import { join } from 'path';
 import type { Client } from 'pg';
 
 export async function executeSqlFile(
-  file: string,
   db: Client,
+  file: string,
   schemas: string[]
 ): Promise<unknown> {
   try {
