@@ -1,5 +1,9 @@
--- TODO: allow users to ignore namespaces
-SELECT nspname FROM pg_catalog.pg_namespace
+SELECT
+    ns.oid AS "oid",
+    ns.nspname AS "name"
+FROM
+    pg_catalog.pg_namespace AS ns
 WHERE
-    nspname != 'information_schema'
-    AND nspname NOT LIKE 'pg_%';
+    ns.nspname != 'information_schema'
+    AND ns.nspname NOT LIKE 'pg_%'
+    AND ns.nspname NOT IN (SELECT unnest($1::text []));

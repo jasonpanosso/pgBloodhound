@@ -1,54 +1,48 @@
 import type { DatabaseObject, DatabaseObjectType } from '@/types/Database';
 import type { ClientConfig } from 'pg';
-import type { SchemaDetails } from '@/types/Database';
-import getSchemaNames from '@/queries/getSchemaNames';
-import getDatabaseObjectsFromSchema from '@/queries/getDatabaseObjects';
+import {
+  validateNamespacesQuery,
+  validateRelationsQuery,
+  validateColumnsQuery,
+  validateConstraintsQuery,
+} from './validators';
 import instantiateDatabaseConnection from '@/database';
-import introspectTables from '@/queries/introspectTables';
-import introspectEnums from '@/queries/introspectEnums';
-import introspectViews from './queries/introspectViews';
-import introspectRanges from './queries/introspectRanges';
-import introspectDomains from './queries/introspectDomains';
-import introspectCompositeTypes from './queries/introspectCompositeTypes';
+import { executeSqlFile } from './utils/sqlHelpers';
+import assert from 'assert';
 
 const introspectDatabase = async (connectionConfig: ClientConfig) => {
   const db = await instantiateDatabaseConnection(connectionConfig);
   try {
     await db.query('BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE');
 
-    const schemas = await getSchemaNames(db);
-    console.log('Schemas: ', schemas);
+    const namespaceQueryResult = await executeSqlFile(db, 'namespaces');
+    const namespaces = validateNamespacesQuery(namespaceQueryResult);
+    assert(namespaces.length > 0, 'No namespaces found in database');
 
-    const result: Record<string, SchemaDetails> = {};
-    for (const schema of schemas) {
-      const pgObjects = await getDatabaseObjectsFromSchema(db, schema);
+    const namespaceOids = namespaces.map((ns) => ns.oid);
 
-      const {
-        tables,
-        enums,
-        views,
-        materializedViews,
-        ranges,
-        domains,
-        compositeTypes,
-      } = sortDatabaseObjectsByType(pgObjects);
+    const relationsQueryResult = await executeSqlFile(
+      db,
+      'relations',
+      namespaceOids
+    );
+    const relations = validateRelationsQuery(relationsQueryResult);
 
-      result[schema] = {
-        tables: await introspectTables(db, schema, tables),
-        enums: await introspectEnums(db, schema, enums),
-        views: await introspectViews(db, schema, views),
-        materializedViews: await introspectViews(db, schema, materializedViews),
-        ranges: await introspectRanges(db, schema, ranges),
-        domains: await introspectDomains(db, schema, domains),
-        compositeTypes: await introspectCompositeTypes(
-          db,
-          schema,
-          compositeTypes
-        ),
-      };
-    }
+    const columnsQueryResult = await executeSqlFile(
+      db,
+      'columns',
+      namespaceOids
+    );
+    const columns = validateColumnsQuery(columnsQueryResult);
 
-    console.dir(result, { depth: 10 });
+    const constraintsQueryResult = await executeSqlFile(
+      db,
+      'constraints',
+      namespaceOids
+    );
+    const constraints = validateConstraintsQuery(constraintsQueryResult);
+
+    console.dir(constraints, { depth: 7 });
   } catch (err) {
     throw err;
   } finally {
