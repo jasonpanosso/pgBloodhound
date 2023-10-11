@@ -1,9 +1,12 @@
 import { z } from 'zod';
 
-const namespaceQueryValidator = z.array(
-  z.object({ name: z.string(), oid: z.number().int() })
-);
+export type NamespaceQuery = z.infer<typeof namespaceQueryValidator>;
+
+const namespaceQueryValidator = z.object({
+  name: z.string(),
+  oid: z.number().int(),
+});
 
 export function validateNamespacesQuery(queryResult: unknown[]) {
-  return namespaceQueryValidator.parse(queryResult);
+  return z.array(namespaceQueryValidator).parse(queryResult);
 }

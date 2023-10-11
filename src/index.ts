@@ -1,10 +1,13 @@
-import type { DatabaseObject, DatabaseObjectType } from '@/types/Database';
 import type { ClientConfig } from 'pg';
 import {
   validateNamespacesQuery,
   validateRelationsQuery,
   validateColumnsQuery,
   validateConstraintsQuery,
+  type NamespaceQuery,
+  type RelationQuery,
+  type ColumnQuery,
+  type ConstraintQuery,
 } from './validators';
 import instantiateDatabaseConnection from '@/database';
 import { executeSqlFile } from './utils/sqlHelpers';
@@ -28,6 +31,7 @@ const introspectDatabase = async (connectionConfig: ClientConfig) => {
     );
     const relations = validateRelationsQuery(relationsQueryResult);
 
+    // console.dir(relations, { depth: 7 });
     const columnsQueryResult = await executeSqlFile(
       db,
       'columns',
@@ -35,6 +39,7 @@ const introspectDatabase = async (connectionConfig: ClientConfig) => {
     );
     const columns = validateColumnsQuery(columnsQueryResult);
 
+    // console.dir(columns, { depth: 7 });
     const constraintsQueryResult = await executeSqlFile(
       db,
       'constraints',
@@ -42,7 +47,11 @@ const introspectDatabase = async (connectionConfig: ClientConfig) => {
     );
     const constraints = validateConstraintsQuery(constraintsQueryResult);
 
-    console.dir(constraints, { depth: 7 });
+    // console.dir(constraints, { depth: 7 });
+
+    const test = nestAndSortData(namespaces, relations, columns, constraints);
+
+    console.dir(test, { depth: 7 });
   } catch (err) {
     throw err;
   } finally {
@@ -51,34 +60,93 @@ const introspectDatabase = async (connectionConfig: ClientConfig) => {
   }
 };
 
-function filterObjectsByType<T extends DatabaseObjectType>(
-  objects: DatabaseObject[],
-  type: T
-): (DatabaseObject & { objectType: T })[] {
-  return objects.filter(
-    (obj): obj is DatabaseObject & { objectType: T } => obj.objectType === type
-  );
+function sortColumnsByParentOid(columns: ColumnQuery[]) {
+  return columns.reduce((map, column) => {
+    if (map.has(column.parentOid)) {
+      map.get(column.parentOid)!.push(column);
+    } else {
+      map.set(column.parentOid, [column]);
+    }
+    return map;
+  }, new Map<number, ColumnQuery[]>());
 }
 
-// inconsequential type, a generic with the same content would not work.
-type SortedDatabaseObjects = {
-  [K in DatabaseObjectType as K extends K
-    ? `${K}s`
-    : never]: (DatabaseObject & { objectType: K })[];
+function sortConstraintsByParentOid(constraints: ConstraintQuery[]) {
+  return constraints.reduce((map, constraint) => {
+    if (map.has(constraint.parentOid)) {
+      map.get(constraint.parentOid)!.push(constraint);
+    } else {
+      map.set(constraint.parentOid, [constraint]);
+    }
+    return map;
+  }, new Map<number, ConstraintQuery[]>());
+}
+
+function createRelationsMap(relations: RelationQuery[]) {
+  return relations.reduce((map, relation) => {
+    map.set(relation.oid, relation);
+    return map;
+  }, new Map<number, RelationQuery>());
+}
+
+function createNamespacesMap(namespaces: NamespaceQuery[]) {
+  return namespaces.reduce((map, namespace) => {
+    map.set(namespace.oid, namespace);
+    return map;
+  }, new Map<number, NamespaceQuery>());
+}
+
+// TODO: TEMP types for testing
+type ColumnData = ColumnQuery;
+type ConstraintData = ConstraintQuery;
+
+type RelationData = {
+  columns: Record<string, ColumnData>;
+  constraints: Record<string, ConstraintData>;
 };
 
-function sortDatabaseObjectsByType(
-  databaseObjects: DatabaseObject[]
-): SortedDatabaseObjects {
-  return {
-    tables: filterObjectsByType(databaseObjects, 'table'),
-    enums: filterObjectsByType(databaseObjects, 'enum'),
-    compositeTypes: filterObjectsByType(databaseObjects, 'compositeType'),
-    views: filterObjectsByType(databaseObjects, 'view'),
-    materializedViews: filterObjectsByType(databaseObjects, 'materializedView'),
-    ranges: filterObjectsByType(databaseObjects, 'range'),
-    domains: filterObjectsByType(databaseObjects, 'domain'),
-  };
+type SchemaData = {
+  tables: Record<string, RelationData>;
+};
+
+type Schema = Record<string, SchemaData>;
+
+function nestAndSortData(
+  namespaces: NamespaceQuery[],
+  relations: RelationQuery[],
+  columns: ColumnQuery[],
+  constraints: ConstraintQuery[]
+): Schema {
+  const columnMap = sortColumnsByParentOid(columns);
+  const constraintMap = sortConstraintsByParentOid(constraints);
+  const relationMap = createRelationsMap(relations);
+  const namespaceMap = createNamespacesMap(namespaces);
+
+  const result: Schema = {};
+
+  for (const [namespaceOid, namespace] of namespaceMap.entries()) {
+    result[namespace.name] = { tables: {} };
+
+    for (const [relationOid, relation] of relationMap.entries()) {
+      if (relation.parentOid === namespaceOid) {
+        const relationColumns = columnMap.get(relationOid) ?? [];
+        const relationConstraints = constraintMap.get(relationOid) ?? [];
+        const relationData: RelationData = { columns: {}, constraints: {} };
+
+        for (const column of relationColumns) {
+          relationData.columns[column.name] = column;
+        }
+
+        for (const constraint of relationConstraints) {
+          relationData.constraints[constraint.name] = constraint;
+        }
+
+        result[namespace.name]!.tables[relation.name] = relationData;
+      }
+    }
+  }
+
+  return result;
 }
 
 // temp: testing

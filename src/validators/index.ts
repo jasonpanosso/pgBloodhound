@@ -1,4 +1,4 @@
-export { validateNamespacesQuery } from './namespaces';
-export { validateRelationsQuery } from './relations';
-export { validateColumnsQuery } from './columns';
-export { validateConstraintsQuery } from './constraints';
+export { validateNamespacesQuery, type NamespaceQuery } from './namespaces';
+export { validateRelationsQuery, type RelationQuery } from './relations';
+export { validateColumnsQuery, type ColumnQuery } from './columns';
+export { validateConstraintsQuery, type ConstraintQuery } from './constraints';

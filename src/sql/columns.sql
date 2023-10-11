@@ -1,7 +1,7 @@
 SELECT
     a.attname AS "name",
-    c.oid AS "oid",
-    c.relnamespace AS "parentOid",
+    a.attnum AS "attNum",
+    c.oid AS "parentOid",
     c.relkind AS "parentKind",
     a.attnotnull AS "notNull",
     PG_GET_EXPR(ad.adbin, ad.adrelid)::text AS "defaultWithTypeCast",
