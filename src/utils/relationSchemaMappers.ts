@@ -69,6 +69,7 @@ export function mapRelationsWithNestedColumnsAndConstraints(
 
 const relationTypes = {
   r: 'tables',
+  p: 'tables',
   v: 'views',
   m: 'materializedViews',
 } as const;
