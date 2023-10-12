@@ -1,8 +1,6 @@
 import { Client, type ClientConfig } from 'pg';
 
-export default async function instantiateDatabaseConnection(
-  config: ClientConfig
-) {
+export async function instantiateDatabaseConnection(config: ClientConfig) {
   const client = new Client(config);
   try {
     await client.connect();
