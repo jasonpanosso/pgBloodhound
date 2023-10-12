@@ -1,5 +1,5 @@
 import { readFile } from 'fs/promises';
-import { isNodeError } from './errorHandlers';
+import { isNodeError } from '@/utils/errorHandlers';
 import { join } from 'path';
 import type { Client } from 'pg';
 
@@ -9,7 +9,7 @@ export async function executeSqlFile(
   filteredOids: number[] = []
 ): Promise<unknown[]> {
   try {
-    const filePath = join(__dirname, '../sql', `${file}.sql`);
+    const filePath = join(__dirname, './sql', `${file}.sql`);
     const sqlQueryString = await readFile(filePath, 'utf8');
     const result = await db.query(sqlQueryString, [filteredOids]);
 

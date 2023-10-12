@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export type ConstraintQuery = z.infer<typeof constraintsQueryValidator>;
 
-const constraintsQueryValidator = z.object({
+export const constraintsQueryValidator = z.object({
   name: z.string(),
   oid: z.number().int(),
   parentOid: z.number().int(),
@@ -26,7 +26,3 @@ const constraintsQueryValidator = z.object({
     )
     .nullable(),
 });
-
-export function validateConstraintsQuery(queryResult: unknown[]) {
-  return z.array(constraintsQueryValidator).parse(queryResult);
-}
