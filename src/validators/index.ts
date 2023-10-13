@@ -3,6 +3,7 @@ export {
   type RelationQuery,
   type ColumnQuery,
   type ConstraintQuery,
+  type EnumQuery,
 } from './schemas';
 
 export {
@@ -10,4 +11,5 @@ export {
   validateRelationsQuery,
   validateColumnsQuery,
   validateConstraintsQuery,
+  validateEnumsQuery,
 } from './validateQueries';

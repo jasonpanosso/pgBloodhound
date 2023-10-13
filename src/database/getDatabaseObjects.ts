@@ -3,6 +3,7 @@ import { executeSqlFile } from '@/database';
 import {
   validateColumnsQuery,
   validateConstraintsQuery,
+  validateEnumsQuery,
   validateNamespacesQuery,
   validateRelationsQuery,
 } from '@/validators';
@@ -40,7 +41,10 @@ export async function getDatabaseObjects(db: Client) {
     );
     const constraints = validateConstraintsQuery(constraintsQueryResult);
 
-    return { namespaces, relations, columns, constraints };
+    const enumsQueryResult = await executeSqlFile(db, 'enums', namespaceOids);
+    const enums = validateEnumsQuery(enumsQueryResult);
+
+    return { namespaces, relations, columns, constraints, enums };
   } catch (err) {
     // TODO
     throw err;
