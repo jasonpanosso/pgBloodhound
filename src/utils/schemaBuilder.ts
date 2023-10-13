@@ -5,6 +5,7 @@ import type {
   ConstraintQuery,
   ColumnQuery,
   RelationQuery,
+  DomainQuery,
 } from '@/validators';
 import { mapRelationsWithNestedColumnsAndConstraints } from './relationSchemaMappers';
 
@@ -71,6 +72,22 @@ const groupEnumsByNamespace: GroupingFunction<EnumQuery> = (
   }
 };
 
+const groupDomainsByNamespace: GroupingFunction<DomainQuery> = (
+  namespaceMap,
+  domains,
+  schema
+) => {
+  for (const domain of domains) {
+    const namespaceName = namespaceMap.get(domain.parentOid);
+    if (!namespaceName) {
+      console.warn(`Unknown namespace for domain: ${domain.name}`);
+      continue;
+    }
+
+    schema[namespaceName]!.domains[domain.name] = domain;
+  }
+};
+
 function mapNamespaceNameToOid(namespaces: NamespaceQuery[]) {
   return namespaces.reduce((map, namespace) => {
     map.set(namespace.oid, namespace.name);
@@ -84,6 +101,7 @@ export function buildSchema(
   columns: ColumnQuery[],
   constraints: ConstraintQuery[],
   enums: EnumQuery[],
+  domains: DomainQuery[],
   namespaces: NamespaceQuery[]
 ) {
   const namespaceMap = mapNamespaceNameToOid(namespaces);
@@ -113,6 +131,7 @@ export function buildSchema(
 
   groupByNamespace(mappedRelations, groupRelationsByNamespace);
   groupByNamespace(enums, groupEnumsByNamespace);
+  groupByNamespace(domains, groupDomainsByNamespace);
 
   return schema;
 }

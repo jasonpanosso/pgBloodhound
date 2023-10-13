@@ -5,6 +5,7 @@ import {
   columnsQueryValidator,
   constraintsQueryValidator,
   enumsQueryValidator,
+  domainsQueryValidator,
 } from './schemas';
 
 export function validateColumnsQuery(queryResult: unknown[]) {
@@ -25,4 +26,8 @@ export function validateRelationsQuery(queryResult: unknown[]) {
 
 export function validateEnumsQuery(queryResult: unknown[]) {
   return z.array(enumsQueryValidator).parse(queryResult);
+}
+
+export function validateDomainsQuery(queryResult: unknown[]) {
+  return z.array(domainsQueryValidator).parse(queryResult);
 }

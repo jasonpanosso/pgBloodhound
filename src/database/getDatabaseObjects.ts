@@ -3,6 +3,7 @@ import { executeSqlFile } from '@/database';
 import {
   validateColumnsQuery,
   validateConstraintsQuery,
+  validateDomainsQuery,
   validateEnumsQuery,
   validateNamespacesQuery,
   validateRelationsQuery,
@@ -44,7 +45,14 @@ export async function getDatabaseObjects(db: Client) {
     const enumsQueryResult = await executeSqlFile(db, 'enums', namespaceOids);
     const enums = validateEnumsQuery(enumsQueryResult);
 
-    return { namespaces, relations, columns, constraints, enums };
+    const domainsQueryResult = await executeSqlFile(
+      db,
+      'domains',
+      namespaceOids
+    );
+    const domains = validateDomainsQuery(domainsQueryResult);
+
+    return { namespaces, relations, columns, constraints, enums, domains };
   } catch (err) {
     // TODO
     throw err;

@@ -15,6 +15,7 @@ export async function introspectDatabase(connectionConfig: ClientConfig) {
     dbObjects.columns,
     dbObjects.constraints,
     dbObjects.enums,
+    dbObjects.domains,
     dbObjects.namespaces
   );
 

@@ -4,6 +4,7 @@ export {
   type ColumnQuery,
   type ConstraintQuery,
   type EnumQuery,
+  type DomainQuery,
 } from './schemas';
 
 export {
@@ -12,4 +13,5 @@ export {
   validateColumnsQuery,
   validateConstraintsQuery,
   validateEnumsQuery,
+  validateDomainsQuery,
 } from './validateQueries';
