@@ -7,7 +7,7 @@ SELECT
 FROM
     pg_class AS c
 WHERE
-    c.relkind IN ('r', 'v', 'm', 'p', 'S')
+    c.relkind IN ('r', 'v', 'm', 'p')
     AND c.relnamespace = ANY($1::oid [])
 ORDER BY
     c.relnamespace,
