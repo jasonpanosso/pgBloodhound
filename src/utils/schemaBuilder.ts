@@ -1,5 +1,12 @@
 import type { RelationData, SchemaData } from '@/types';
-import type { NamespaceQuery, EnumQuery } from '@/validators';
+import type {
+  NamespaceQuery,
+  EnumQuery,
+  ConstraintQuery,
+  ColumnQuery,
+  RelationQuery,
+} from '@/validators';
+import { mapRelationsWithNestedColumnsAndConstraints } from './relationSchemaMappers';
 
 type GroupingFunction<T extends { parentOid: number }> = (
   namespaceMap: Map<number, string>,
@@ -71,8 +78,11 @@ function mapNamespaceNameToOid(namespaces: NamespaceQuery[]) {
   }, new Map<number, string>());
 }
 
+// TODO: replace all args with single dbObjects arg
 export function buildSchema(
-  relations: RelationData[],
+  relations: RelationQuery[],
+  columns: ColumnQuery[],
+  constraints: ConstraintQuery[],
   enums: EnumQuery[],
   namespaces: NamespaceQuery[]
 ) {
@@ -93,9 +103,15 @@ export function buildSchema(
     };
   }
 
+  const mappedRelations = mapRelationsWithNestedColumnsAndConstraints(
+    relations,
+    columns,
+    constraints
+  );
+
   const groupByNamespace = curriedGroupByNamespace(namespaceMap, schema);
 
-  groupByNamespace(relations, groupRelationsByNamespace);
+  groupByNamespace(mappedRelations, groupRelationsByNamespace);
   groupByNamespace(enums, groupEnumsByNamespace);
 
   return schema;

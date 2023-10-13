@@ -1,9 +1,6 @@
 import type { ClientConfig } from 'pg';
 import { instantiateDatabaseConnection, getDatabaseObjects } from '@/database';
-import {
-  mapRelationsWithNestedColumnsAndConstraints,
-  sortRelationsIntoNamespaces,
-} from './utils/relationSchemaMappers';
+import { buildSchema } from './utils/schemaBuilder';
 
 async function fetchDatabaseObjects(connectionConfig: ClientConfig) {
   const db = await instantiateDatabaseConnection(connectionConfig);
@@ -11,21 +8,17 @@ async function fetchDatabaseObjects(connectionConfig: ClientConfig) {
 }
 
 export async function introspectDatabase(connectionConfig: ClientConfig) {
-  const { namespaces, relations, columns, constraints } =
-    await fetchDatabaseObjects(connectionConfig);
+  const dbObjects = await fetchDatabaseObjects(connectionConfig);
 
-  const mappedRelations = mapRelationsWithNestedColumnsAndConstraints(
-    relations,
-    columns,
-    constraints
+  const schema = buildSchema(
+    dbObjects.relations,
+    dbObjects.columns,
+    dbObjects.constraints,
+    dbObjects.enums,
+    dbObjects.namespaces
   );
 
-  const namespacesWithRelations = sortRelationsIntoNamespaces(
-    mappedRelations,
-    namespaces
-  );
-
-  console.dir(namespacesWithRelations, { depth: 10 });
+  console.dir(schema, { depth: 10 });
 }
 
 // temp: testing
