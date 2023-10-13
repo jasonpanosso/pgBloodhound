@@ -5,6 +5,8 @@ export {
   type ConstraintQuery,
   type EnumQuery,
   type DomainQuery,
+  type RangeQuery,
+  type CompositeTypeQuery,
 } from './schemas';
 
 export {
@@ -14,4 +16,6 @@ export {
   validateConstraintsQuery,
   validateEnumsQuery,
   validateDomainsQuery,
+  validateRangesQuery,
+  validateCompositeTypesQuery,
 } from './validateQueries';

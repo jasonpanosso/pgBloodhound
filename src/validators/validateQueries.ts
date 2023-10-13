@@ -6,6 +6,8 @@ import {
   constraintsQueryValidator,
   enumsQueryValidator,
   domainsQueryValidator,
+  rangesQueryValidator,
+  compositeTypeQueryValidator,
 } from './schemas';
 
 export function validateColumnsQuery(queryResult: unknown[]) {
@@ -30,4 +32,12 @@ export function validateEnumsQuery(queryResult: unknown[]) {
 
 export function validateDomainsQuery(queryResult: unknown[]) {
   return z.array(domainsQueryValidator).parse(queryResult);
+}
+
+export function validateRangesQuery(queryResult: unknown[]) {
+  return z.array(rangesQueryValidator).parse(queryResult);
+}
+
+export function validateCompositeTypesQuery(queryResult: unknown[]) {
+  return z.array(compositeTypeQueryValidator).parse(queryResult);
 }

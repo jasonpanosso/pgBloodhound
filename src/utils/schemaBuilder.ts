@@ -1,112 +1,71 @@
-import type { RelationData, SchemaData } from '@/types';
-import type {
-  NamespaceQuery,
-  EnumQuery,
-  ConstraintQuery,
-  ColumnQuery,
-  RelationQuery,
-  DomainQuery,
-} from '@/validators';
-import { mapRelationsWithNestedColumnsAndConstraints } from './relationSchemaMappers';
+import type { DatabaseObjects, Schema, NamespaceData } from '@/types';
+import type { NamespaceQuery } from '@/validators';
+import {
+  nestColumnsAndConstraintsInRelations,
+  sortRelationsByType,
+} from './relationDataTransformers';
 
-type GroupingFunction<T extends { parentOid: number }> = (
-  namespaceMap: Map<number, string>,
-  items: T[],
-  schema: Record<string, SchemaData>
-) => void;
+type UnwrappedRecord<T> = T extends Record<string, infer U> ? U : never;
 
-const curriedGroupByNamespace = (
+const curriedPopulateSchemaByNamespace = (
   namespaceMap: Map<number, string>,
-  schema: Record<string, SchemaData>
+  schema: Schema
 ) => {
-  return <T extends { parentOid: number }>(
-    items: T[],
-    grouper: GroupingFunction<T>
+  return <
+    T extends UnwrappedRecord<NamespaceData[K]>,
+    K extends keyof NamespaceData,
+  >(
+    dbObjects: T[],
+    objectType: K
   ) => {
-    grouper(namespaceMap, items, schema);
+    populateSchemaByNamespace(namespaceMap, dbObjects, objectType, schema);
   };
 };
 
-const groupRelationsByNamespace: GroupingFunction<RelationData> = (
-  namespaceMap,
-  relations,
-  schema
-) => {
-  const relationTypes = {
-    r: 'tables',
-    p: 'tables',
-    v: 'views',
-    m: 'materializedViews',
-  } as const;
-
-  for (const relation of relations) {
-    const type = relationTypes[relation.kind];
-    if (!type) {
-      console.warn(`Unknown PG Kind: ${relation.kind}`);
-      continue;
-    }
-
-    const namespaceName = namespaceMap.get(relation.parentOid);
+function populateSchemaByNamespace<
+  T extends UnwrappedRecord<NamespaceData[K]>,
+  K extends keyof NamespaceData,
+>(
+  namespaceMap: Map<number, string>,
+  databaseObjects: T[],
+  objectType: K,
+  schema: Schema
+) {
+  for (const databaseObject of databaseObjects) {
+    const namespaceName = namespaceMap.get(databaseObject.parentOid);
     if (!namespaceName) {
-      console.warn(`Unknown namespace for relation: ${relation.name}`);
+      console.warn(
+        `Unknown namespace for database object: ${databaseObject.name}`
+      );
       continue;
     }
 
-    schema[namespaceName]![type][relation.name] = relation;
+    schema[namespaceName]![objectType][databaseObject.name] = databaseObject;
   }
-};
+}
 
-const groupEnumsByNamespace: GroupingFunction<EnumQuery> = (
-  namespaceMap,
-  enums,
-  schema
-) => {
-  for (const e of enums) {
-    const namespaceName = namespaceMap.get(e.parentOid);
-    if (!namespaceName) {
-      console.warn(`Unknown namespace for enum: ${e.name}`);
-      continue;
-    }
-
-    schema[namespaceName]!.enums[e.name] = e;
-  }
-};
-
-const groupDomainsByNamespace: GroupingFunction<DomainQuery> = (
-  namespaceMap,
-  domains,
-  schema
-) => {
-  for (const domain of domains) {
-    const namespaceName = namespaceMap.get(domain.parentOid);
-    if (!namespaceName) {
-      console.warn(`Unknown namespace for domain: ${domain.name}`);
-      continue;
-    }
-
-    schema[namespaceName]!.domains[domain.name] = domain;
-  }
-};
-
-function mapNamespaceNameToOid(namespaces: NamespaceQuery[]) {
+function createNamespaceNameToOidMap(namespaces: NamespaceQuery[]) {
   return namespaces.reduce((map, namespace) => {
     map.set(namespace.oid, namespace.name);
     return map;
   }, new Map<number, string>());
 }
 
-// TODO: replace all args with single dbObjects arg
-export function buildSchema(
-  relations: RelationQuery[],
-  columns: ColumnQuery[],
-  constraints: ConstraintQuery[],
-  enums: EnumQuery[],
-  domains: DomainQuery[],
-  namespaces: NamespaceQuery[]
-) {
-  const namespaceMap = mapNamespaceNameToOid(namespaces);
+export function buildSchema(dbObjects: DatabaseObjects) {
+  const {
+    namespaces,
+    relations,
+    columns,
+    constraints,
+    enums,
+    ranges,
+    domains,
+    compositeTypes,
+  } = dbObjects;
 
-  const schema: Record<string, SchemaData> = {};
+  const namespaceMap = createNamespaceNameToOidMap(namespaces);
+
+  const schema: Schema = {};
 
   for (const name of namespaceMap.values()) {
     schema[name] = {
@@ -117,21 +76,27 @@ export function buildSchema(
       domains: {},
       ranges: {},
       compositeTypes: {},
-      functions: {},
     };
   }
 
-  const mappedRelations = mapRelationsWithNestedColumnsAndConstraints(
+  const mappedRelations = nestColumnsAndConstraintsInRelations(
     relations,
     columns,
     constraints
   );
 
-  const groupByNamespace = curriedGroupByNamespace(namespaceMap, schema);
+  const { tables, views, materializedViews } =
+    sortRelationsByType(mappedRelations);
 
-  groupByNamespace(mappedRelations, groupRelationsByNamespace);
-  groupByNamespace(enums, groupEnumsByNamespace);
-  groupByNamespace(domains, groupDomainsByNamespace);
+  const populateSchema = curriedPopulateSchemaByNamespace(namespaceMap, schema);
+
+  populateSchema(tables, 'tables');
+  populateSchema(views, 'views');
+  populateSchema(materializedViews, 'materializedViews');
+  populateSchema(enums, 'enums');
+  populateSchema(domains, 'domains');
+  populateSchema(ranges, 'ranges');
+  populateSchema(compositeTypes, 'compositeTypes');
 
   return schema;
 }

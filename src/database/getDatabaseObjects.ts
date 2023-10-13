@@ -1,15 +1,18 @@
 import type { Client } from 'pg';
+import type { DatabaseObjects } from '@/types';
 import { executeSqlFile } from '@/database';
 import {
   validateColumnsQuery,
+  validateCompositeTypesQuery,
   validateConstraintsQuery,
   validateDomainsQuery,
   validateEnumsQuery,
   validateNamespacesQuery,
+  validateRangesQuery,
   validateRelationsQuery,
 } from '@/validators';
 
-export async function getDatabaseObjects(db: Client) {
+export async function getDatabaseObjects(db: Client): Promise<DatabaseObjects> {
   try {
     await db.query('BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE');
 
@@ -52,7 +55,28 @@ export async function getDatabaseObjects(db: Client) {
     );
     const domains = validateDomainsQuery(domainsQueryResult);
 
-    return { namespaces, relations, columns, constraints, enums, domains };
+    const rangesQueryResult = await executeSqlFile(db, 'ranges', namespaceOids);
+    const ranges = validateRangesQuery(rangesQueryResult);
+
+    const compositeTypesQueryResult = await executeSqlFile(
+      db,
+      'compositeTypes',
+      namespaceOids
+    );
+    const compositeTypes = validateCompositeTypesQuery(
+      compositeTypesQueryResult
+    );
+
+    return {
+      namespaces,
+      relations,
+      columns,
+      constraints,
+      enums,
+      domains,
+      ranges,
+      compositeTypes,
+    };
   } catch (err) {
     // TODO
     throw err;

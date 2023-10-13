@@ -10,14 +10,7 @@ async function fetchDatabaseObjects(connectionConfig: ClientConfig) {
 export async function introspectDatabase(connectionConfig: ClientConfig) {
   const dbObjects = await fetchDatabaseObjects(connectionConfig);
 
-  const schema = buildSchema(
-    dbObjects.relations,
-    dbObjects.columns,
-    dbObjects.constraints,
-    dbObjects.enums,
-    dbObjects.domains,
-    dbObjects.namespaces
-  );
+  const schema = buildSchema(dbObjects);
 
   console.dir(schema, { depth: 10 });
 }

@@ -1,7 +1,8 @@
 SELECT
-    ns.nspname AS "schemaName",
-    t.typname AS "rangeName",
-    r.rngcanonical::regproc::text AS "canonicalNunction",
+    t.typname AS "name",
+    t.oid AS "oid",
+    ns.oid AS "parentOid",
+    r.rngcanonical::regproc::text AS "canonicalFunction",
     r.rngsubdiff::regproc::text AS "subtypeDiffFunction",
     pg_catalog.FORMAT_TYPE(r.rngsubtype, null) AS "subtype",
     r.rngcollation::regnamespace::text
@@ -15,4 +16,4 @@ INNER JOIN
     pg_catalog.pg_namespace AS ns ON t.typnamespace = ns.oid
 WHERE
     t.typtype = 'r'
-    AND ns.nspname = ANY($1);
+    AND ns.oid = ANY($1);
