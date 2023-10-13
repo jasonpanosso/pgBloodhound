@@ -1,4 +1,4 @@
-import type { ColumnQuery, ConstraintQuery } from '@/validators';
+import type { ColumnQuery, ConstraintQuery, EnumQuery } from '@/validators';
 
 // TODO: TEMP types for testing
 export type RelationData = {
@@ -6,7 +6,7 @@ export type RelationData = {
   oid: number;
   parentOid: number;
   description: string | null;
-  kind: string;
+  kind: 'r' | 'm' | 'v' | 'p';
   columns: Record<string, ColumnQuery>;
   constraints: Record<string, ConstraintQuery>;
 };
@@ -15,7 +15,7 @@ export type SchemaData = {
   tables: Record<string, RelationData>;
   views: Record<string, RelationData>;
   materializedViews: Record<string, RelationData>;
-  enums: unknown;
+  enums: Record<string, EnumQuery>;
   domains: unknown;
   ranges: unknown;
   compositeTypes: unknown;

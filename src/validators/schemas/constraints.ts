@@ -13,7 +13,7 @@ export const constraintsQueryValidator = z.object({
   matchType: z.string(),
   isDeferrable: z.boolean(),
   isDeferred: z.boolean(),
-  columnNames: z.string(),
+  columnNames: z.array(z.string()), // TODO: test if nullable
   definition: z.string(),
   references: z
     .array(

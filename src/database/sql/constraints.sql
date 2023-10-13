@@ -39,7 +39,7 @@ FROM (
         con.confmatchtype AS "matchType",
         con.condeferrable AS "isDeferrable",
         con.condeferred AS "isDeferred",
-        ARRAY_AGG(attr.attname) AS "columnNames",
+        JSON_AGG(attr.attname) AS "columnNames",
         PG_GET_CONSTRAINTDEF(con.oid) AS "definition"
     FROM
         pg_catalog.pg_constraint AS con
