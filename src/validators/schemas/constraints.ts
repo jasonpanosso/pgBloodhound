@@ -8,20 +8,24 @@ export const constraintsQueryValidator = z.object({
   parentOid: z.number().int(),
   parentKind: z.string(),
   type: z.string(),
-  onUpdate: z.string(),
-  onDelete: z.string(),
-  matchType: z.string(),
+  onUpdate: z.string().nullable(),
+  onDelete: z.string().nullable(),
+  matchType: z.string().nullable(),
+  description: z.string().nullable(),
+  isValidated: z.boolean(),
   isDeferrable: z.boolean(),
   isDeferred: z.boolean(),
-  columnNames: z.array(z.string()), // TODO: test if nullable
+  columnNames: z.array(z.string()),
   definition: z.string(),
+  indexOid: z.number().nullable(),
   references: z
     .array(
       z.object({
-        columnName: z.string(),
         namespaceOid: z.string(),
         tableOid: z.string(),
+        columnName: z.string(),
         columnAttNum: z.number().int(),
+        columnType: z.string(),
       })
     )
     .nullable(),

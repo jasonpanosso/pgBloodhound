@@ -31,7 +31,7 @@ export type RelationData = {
   constraints: Record<string, ConstraintQuery>;
 };
 
-// TODO: indexes, functions
+// TODO: indices, functions, triggers, sequences, collations?
 export type NamespaceData = {
   tables: Record<string, RelationData>;
   views: Record<string, RelationData>;

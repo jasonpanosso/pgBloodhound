@@ -2,7 +2,7 @@ SELECT
     t.typname AS "name",
     t.oid AS "oid",
     ns.oid AS "parentOid",
-    JSON_AGG(e.enumlabel ORDER BY e.enumsortorder) AS "values"
+    JSONB_AGG(e.enumlabel ORDER BY e.enumsortorder) AS "values"
 FROM
     pg_type AS t
 INNER JOIN pg_enum AS e ON t.oid = e.enumtypid

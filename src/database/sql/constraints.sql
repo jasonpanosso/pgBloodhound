@@ -1,11 +1,12 @@
 WITH fk_references AS (
     SELECT
         con.oid AS constraint_oid,
-        JSON_AGG(JSON_BUILD_OBJECT(
+        JSONB_AGG(JSONB_BUILD_OBJECT(
             'columnName', refattr.attname,
             'namespaceOid', refns.oid,
             'tableOid', reftbl.oid,
-            'columnAttNum', refattr.attnum
+            'columnAttNum', refattr.attnum,
+            'columnType', FORMAT_TYPE(refattr.atttypid, refattr.atttypmod)
         )) FILTER (WHERE con.contype = 'f') AS "references"
     FROM
         pg_catalog.pg_constraint AS con
@@ -26,7 +27,8 @@ WITH fk_references AS (
 
 SELECT
     aggregated.*,
-    fk."references"
+    fk."references",
+    desc_tbl.description AS "description"
 FROM (
     SELECT
         con.conname AS "name",
@@ -34,12 +36,20 @@ FROM (
         con.conrelid AS "parentOid",
         tbl.relkind AS "parentKind",
         con.contype AS "type",
-        con.confupdtype AS "onUpdate",
-        con.confdeltype AS "onDelete",
-        con.confmatchtype AS "matchType",
         con.condeferrable AS "isDeferrable",
         con.condeferred AS "isDeferred",
-        JSON_AGG(attr.attname) AS "columnNames",
+        con.convalidated AS "isValidated",
+        NULLIF(con.conindid, 0) AS "indexOid",
+        NULLIF(
+            CASE WHEN con.contype = 'f' THEN con.confupdtype END, ''
+        ) AS "onUpdate",
+        NULLIF(
+            CASE WHEN con.contype = 'f' THEN con.confdeltype END, ''
+        ) AS "onDelete",
+        NULLIF(
+            CASE WHEN con.contype = 'f' THEN con.confmatchtype END, ''
+        ) AS "matchType",
+        JSONB_AGG(attr.attname) AS "columnNames",
         PG_GET_CONSTRAINTDEF(con.oid) AS "definition"
     FROM
         pg_catalog.pg_constraint AS con
@@ -49,7 +59,8 @@ FROM (
         pg_catalog.pg_attribute AS attr
         ON con.conrelid = attr.attrelid AND attr.attnum = ANY(con.conkey)
     WHERE
-        tbl.relnamespace = ANY($1)
+        -- ignore domain constraints(not associated with tables)
+        tbl.relnamespace = ANY($1) AND con.conrelid != 0
     GROUP BY
         con.conname,
         con.oid,
@@ -60,7 +71,10 @@ FROM (
         con.confmatchtype,
         con.condeferrable,
         con.condeferred,
+        con.convalidated,
         tbl.relkind
 ) AS aggregated
 LEFT JOIN
-    fk_references AS fk ON aggregated.oid = fk.constraint_oid;
+    fk_references AS fk ON aggregated.oid = fk.constraint_oid
+LEFT JOIN
+    pg_catalog.pg_description AS desc_tbl ON aggregated.oid = desc_tbl.objoid;

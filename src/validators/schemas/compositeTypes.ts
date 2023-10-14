@@ -8,6 +8,7 @@ const fieldValidator = z.object({
   isArray: z.boolean(),
   dimensions: z.number().int(),
   typeCategory: z.string(),
+  domainBaseType: z.string().nullable(),
 });
 
 export const compositeTypeQueryValidator = z.object({

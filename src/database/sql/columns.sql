@@ -3,10 +3,10 @@ SELECT
     a.attnum AS "attNum",
     c.oid AS "parentOid",
     c.relkind AS "parentKind",
-    a.attnotnull AS "notNull",
+    a.attnotnull AS "isNullable",
     PG_GET_EXPR(ad.adbin, ad.adrelid)::text AS "defaultWithTypeCast",
     d.description AS "description",
-    FORMAT_TYPE(a.atttypid, a.atttypmod) AS "sqlType",
+    FORMAT_TYPE(a.atttypid, a.atttypmod) AS "pgType",
     CASE
         WHEN
             -- TODO: This needs to be fixed for views
@@ -31,4 +31,4 @@ WHERE
     c.relnamespace = ANY($1::oid [])
     AND a.attnum > 0
     AND NOT a.attisdropped
-    AND c.relkind IN ('m', 'r', 'v', 'c', 'p');
+    AND c.relkind IN ('m', 'r', 'v', 'p');

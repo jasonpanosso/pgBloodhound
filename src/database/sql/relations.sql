@@ -3,9 +3,11 @@ SELECT
     c.relnamespace AS "parentOid",
     c.relkind AS "kind",
     c.relname AS "name",
-    pg_catalog.obj_description(c.oid, 'pg_class') AS "description"
+    d.description AS "description"
 FROM
     pg_class AS c
+LEFT JOIN
+    pg_description AS d ON c.oid = d.objoid
 WHERE
     c.relkind IN ('r', 'v', 'm', 'p')
     AND c.relnamespace = ANY($1::oid [])
