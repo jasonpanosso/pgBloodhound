@@ -80,6 +80,19 @@ export function nestColumnsAndConstraintsInRelations(
 
     for (const constraint of relationConstraints) {
       relationData.constraints[constraint.name] = constraint;
+
+      if (constraint.columnNames) {
+        for (const columnName of constraint.columnNames) {
+          const column = relationData.columns[columnName];
+          if (column) {
+            column.constraints.push(constraint);
+          } else {
+            console.warn(
+              `Column ${columnName} not found in relation ${relation.name}`
+            );
+          }
+        }
+      }
     }
 
     nestedRelations.push(relationData);

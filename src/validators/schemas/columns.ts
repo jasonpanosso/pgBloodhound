@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { constraintsQueryValidator } from './constraints';
 
 export type ColumnQuery = z.infer<typeof columnsQueryValidator>;
 
@@ -12,4 +13,5 @@ export const columnsQueryValidator = z.object({
   defaultWithTypeCast: z.string().nullable(),
   description: z.string().nullable(),
   isGenerated: z.boolean(),
+  constraints: z.array(constraintsQueryValidator).default([]),
 });
