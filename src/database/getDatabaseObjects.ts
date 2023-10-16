@@ -1,6 +1,7 @@
 import type { Client } from 'pg';
 import type { DatabaseObjects } from '@/types';
 import { executeSqlFile } from '@/database';
+import { SqlFileName } from './sqlHelpers';
 import {
   validateColumnsQuery,
   validateCompositeTypesQuery,
@@ -17,9 +18,12 @@ export async function getDatabaseObjects(
   includedNamespaces?: string[]
 ): Promise<DatabaseObjects> {
   try {
-    await db.query('BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE');
+    await db.query('BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE READ ONLY');
 
-    const namespaceQueryResult = await executeSqlFile(db, 'namespaces');
+    const namespaceQueryResult = await executeSqlFile(
+      db,
+      SqlFileName.Namespaces
+    );
     const namespaces = validateNamespacesQuery(namespaceQueryResult);
     if (namespaces.length === 0) {
       throw new Error('No namespaces found in database');
@@ -33,41 +37,49 @@ export async function getDatabaseObjects(
 
     const relationsQueryResult = await executeSqlFile(
       db,
-      'relations',
+      SqlFileName.Relations,
       namespaceOids
     );
     const relations = validateRelationsQuery(relationsQueryResult);
 
     const columnsQueryResult = await executeSqlFile(
       db,
-      'columns',
+      SqlFileName.Columns,
       namespaceOids
     );
     const columns = validateColumnsQuery(columnsQueryResult);
 
     const constraintsQueryResult = await executeSqlFile(
       db,
-      'constraints',
+      SqlFileName.Constraints,
       namespaceOids
     );
     const constraints = validateConstraintsQuery(constraintsQueryResult);
 
-    const enumsQueryResult = await executeSqlFile(db, 'enums', namespaceOids);
+    const enumsQueryResult = await executeSqlFile(
+      db,
+      SqlFileName.Enums,
+      namespaceOids
+    );
     const enums = validateEnumsQuery(enumsQueryResult);
 
     const domainsQueryResult = await executeSqlFile(
       db,
-      'domains',
+      SqlFileName.Domains,
       namespaceOids
     );
     const domains = validateDomainsQuery(domainsQueryResult);
 
-    const rangesQueryResult = await executeSqlFile(db, 'ranges', namespaceOids);
+    const rangesQueryResult = await executeSqlFile(
+      db,
+      SqlFileName.Ranges,
+      namespaceOids
+    );
     const ranges = validateRangesQuery(rangesQueryResult);
 
     const compositeTypesQueryResult = await executeSqlFile(
       db,
-      'compositeTypes',
+      SqlFileName.CompositeTypes,
       namespaceOids
     );
     const compositeTypes = validateCompositeTypesQuery(

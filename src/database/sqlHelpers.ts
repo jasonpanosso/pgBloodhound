@@ -3,13 +3,24 @@ import { isNodeError } from '@/utils/errorHandlers';
 import { join } from 'path';
 import type { Client } from 'pg';
 
+export enum SqlFileName {
+  Columns = 'columns.sql',
+  CompositeTypes = 'compositeTypes.sql',
+  Constraints = 'constraints.sql',
+  Domains = 'domains.sql',
+  Enums = 'enums.sql',
+  Namespaces = 'namespaces.sql',
+  Ranges = 'ranges.sql',
+  Relations = 'relations.sql',
+}
+
 export async function executeSqlFile(
   db: Client,
-  file: string,
+  fileName: SqlFileName,
   filteredOids: number[] = []
 ): Promise<unknown[]> {
   try {
-    const filePath = join(__dirname, './sql', `${file}.sql`);
+    const filePath = join(__dirname, './sql', fileName);
     const sqlQueryString = await readFile(filePath, 'utf8');
     const result = await db.query(sqlQueryString, [filteredOids]);
 
@@ -17,7 +28,7 @@ export async function executeSqlFile(
   } catch (err: unknown) {
     if (isNodeError(err) && err.code === 'ENOENT') {
       throw Error(
-        `File name: "${file}" passed to function "executeSqlFile" not found`
+        `File name: "${fileName}" passed to function "executeSqlFile" not found`
       );
     } else {
       throw err;
