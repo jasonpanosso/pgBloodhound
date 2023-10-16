@@ -5,25 +5,27 @@ import {
   sortRelationsByType,
 } from './relationDataTransformers';
 
-type UnwrappedRecord<T> = T extends Record<string, infer U> ? U : never;
+type NamespaceDataValue = NamespaceData[keyof NamespaceData] extends Record<
+  string,
+  infer T
+>
+  ? T
+  : never;
 
-const curriedPopulateSchemaByNamespace = (
+function createSchemaPopulator(
   namespaceMap: Map<number, string>,
   schema: Schema
-) => {
-  return <
-    T extends UnwrappedRecord<NamespaceData[K]>,
-    K extends keyof NamespaceData,
-  >(
+) {
+  return <T extends NamespaceDataValue, K extends keyof NamespaceData>(
     dbObjects: T[],
     objectType: K
   ) => {
     populateSchemaByNamespace(namespaceMap, dbObjects, objectType, schema);
   };
-};
+}
 
 function populateSchemaByNamespace<
-  T extends UnwrappedRecord<NamespaceData[K]>,
+  T extends NamespaceDataValue,
   K extends keyof NamespaceData,
 >(
   namespaceMap: Map<number, string>,
@@ -88,7 +90,7 @@ export function buildSchema(dbObjects: DatabaseObjects): Schema {
   const { tables, views, materializedViews } =
     sortRelationsByType(mappedRelations);
 
-  const populateSchema = curriedPopulateSchemaByNamespace(namespaceMap, schema);
+  const populateSchema = createSchemaPopulator(namespaceMap, schema);
 
   populateSchema(tables, 'tables');
   populateSchema(views, 'views');
