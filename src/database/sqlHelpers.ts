@@ -4,14 +4,14 @@ import { join } from 'path';
 import type { Client } from 'pg';
 
 export enum SqlFileName {
-  Columns = 'columns.sql',
-  CompositeTypes = 'compositeTypes.sql',
-  Constraints = 'constraints.sql',
-  Domains = 'domains.sql',
-  Enums = 'enums.sql',
-  Namespaces = 'namespaces.sql',
-  Ranges = 'ranges.sql',
-  Relations = 'relations.sql',
+  Columns = 'columns',
+  CompositeTypes = 'compositeTypes',
+  Constraints = 'constraints',
+  Domains = 'domains',
+  Enums = 'enums',
+  Namespaces = 'namespaces',
+  Ranges = 'ranges',
+  Relations = 'relations',
 }
 
 export async function executeSqlFile(
@@ -20,7 +20,7 @@ export async function executeSqlFile(
   filteredOids: number[] = []
 ): Promise<unknown[]> {
   try {
-    const filePath = join(__dirname, './sql', fileName);
+    const filePath = join(__dirname, './sql', `${fileName}.sql`);
     const sqlQueryString = await readFile(filePath, 'utf8');
     const result = await db.query(sqlQueryString, [filteredOids]);
 
