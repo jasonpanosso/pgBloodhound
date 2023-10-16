@@ -5,7 +5,7 @@ SELECT
     JSONB_AGG(
         JSONB_BUILD_OBJECT(
             'name', a.attname,
-            'type', FORMAT_TYPE(a.atttypid, a.atttypmod),
+            'dataType', FORMAT_TYPE(a.atttypid, a.atttypmod),
             'typeCategory', field_type.typtype,
             'domainBaseType', domain_base_type.typname,
             'dimensions', a.attndims,

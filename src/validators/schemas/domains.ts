@@ -3,7 +3,7 @@ import { collationsQueryValidator } from './collations';
 
 export type DomainQuery = z.infer<typeof domainsQueryValidator>;
 
-const domainConstraintValidator = z.object({
+const domainCheckConstraint = z.object({
   name: z.string(),
   oid: z.string(),
   definition: z.string(),
@@ -19,11 +19,11 @@ export const domainsQueryValidator = z.object({
   parentOid: z.number().int(),
   defaultValue: z.string().nullable(),
   description: z.string().nullable(),
-  type: z.string(),
+  dataType: z.string(),
   collation: collationsQueryValidator.nullable(),
-  constraints: z.array(domainConstraintValidator).transform((constraints) =>
+  constraints: z.array(domainCheckConstraint).transform((constraints) =>
     constraints.reduce(
-      (acc: Record<string, z.infer<typeof domainConstraintValidator>>, cur) => {
+      (acc: Record<string, z.infer<typeof domainCheckConstraint>>, cur) => {
         acc[cur.name] = cur;
         return acc;
       },

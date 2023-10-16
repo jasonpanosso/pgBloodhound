@@ -25,7 +25,7 @@ SELECT
             'definition', PG_GET_CONSTRAINTDEF(con.oid)
         )
     ) FILTER (WHERE con.oid IS NOT NULL) AS "constraints",
-    pg_catalog.FORMAT_TYPE(t.typbasetype, t.typtypmod) AS "type"
+    pg_catalog.FORMAT_TYPE(t.typbasetype, t.typtypmod) AS "dataType"
 FROM
     pg_catalog.pg_type AS t
 INNER JOIN

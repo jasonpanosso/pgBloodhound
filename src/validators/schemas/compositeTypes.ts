@@ -1,13 +1,14 @@
 import { z } from 'zod';
+import { pgTypeCategories } from './common';
 
 export type CompositeTypeQuery = z.infer<typeof compositeTypeQueryValidator>;
 
-const fieldValidator = z.object({
+const field = z.object({
   name: z.string(),
-  type: z.string(),
+  dataType: z.string(),
   isArray: z.boolean(),
   dimensions: z.number().int(),
-  typeCategory: z.string(),
+  typeCategory: pgTypeCategories,
   domainBaseType: z.string().nullable(),
 });
 
@@ -15,13 +16,10 @@ export const compositeTypeQueryValidator = z.object({
   name: z.string(),
   oid: z.number().int(),
   parentOid: z.number().int(),
-  fields: z.array(fieldValidator).transform((fields) =>
-    fields.reduce(
-      (acc: Record<string, z.infer<typeof fieldValidator>>, cur) => {
-        acc[cur.name] = cur;
-        return acc;
-      },
-      {}
-    )
+  fields: z.array(field).transform((fields) =>
+    fields.reduce((acc: Record<string, z.infer<typeof field>>, cur) => {
+      acc[cur.name] = cur;
+      return acc;
+    }, {})
   ),
 });

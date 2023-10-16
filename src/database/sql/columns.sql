@@ -4,9 +4,14 @@ SELECT
     c.oid AS "parentOid",
     c.relkind AS "parentKind",
     a.attnotnull AS "isNullable",
-    PG_GET_EXPR(ad.adbin, ad.adrelid)::text AS "defaultWithTypeCast",
+    PG_GET_EXPR(ad.adbin, ad.adrelid)::text AS "defaultValue",
     d.description AS "description",
-    FORMAT_TYPE(a.atttypid, a.atttypmod) AS "pgType",
+    a.attidentity != '' AS "isIdentity",
+    FORMAT_TYPE(a.atttypid, a.atttypmod) AS "dataType",
+    CASE
+        WHEN a.attidentity != '' THEN a.attidentity
+        WHEN a.attgenerated != '' THEN a.attgenerated
+    END AS "generationMethod",
     CASE
         WHEN
             -- TODO: This needs to be fixed for views

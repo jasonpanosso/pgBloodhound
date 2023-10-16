@@ -51,7 +51,7 @@ function createNamespaceNameToOidMap(namespaces: NamespaceQuery[]) {
   }, new Map<number, string>());
 }
 
-export function buildSchema(dbObjects: DatabaseObjects) {
+export function buildSchema(dbObjects: DatabaseObjects): Schema {
   const {
     namespaces,
     relations,

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { constraintType } from './common';
 
 export type ConstraintQuery = z.infer<typeof constraintsQueryValidator>;
 
@@ -7,7 +8,7 @@ export const constraintsQueryValidator = z.object({
   oid: z.number().int(),
   parentOid: z.number().int(),
   parentKind: z.string(),
-  type: z.string(),
+  constraintType: constraintType,
   onUpdate: z.string().nullable(),
   onDelete: z.string().nullable(),
   matchType: z.string().nullable(),
@@ -25,7 +26,7 @@ export const constraintsQueryValidator = z.object({
         tableOid: z.string(),
         columnName: z.string(),
         columnAttNum: z.number().int(),
-        columnType: z.string(),
+        dataType: z.string(),
       })
     )
     .nullable(),

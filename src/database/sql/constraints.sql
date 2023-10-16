@@ -6,7 +6,7 @@ WITH fk_references AS (
             'namespaceOid', refns.oid,
             'tableOid', reftbl.oid,
             'columnAttNum', refattr.attnum,
-            'columnType', FORMAT_TYPE(refattr.atttypid, refattr.atttypmod)
+            'dataType', FORMAT_TYPE(refattr.atttypid, refattr.atttypmod)
         )) FILTER (WHERE con.contype = 'f') AS "references"
     FROM
         pg_catalog.pg_constraint AS con
@@ -35,7 +35,7 @@ FROM (
         con.oid AS "oid",
         con.conrelid AS "parentOid",
         tbl.relkind AS "parentKind",
-        con.contype AS "type",
+        con.contype AS "constraintType",
         con.condeferrable AS "isDeferrable",
         con.condeferred AS "isDeferred",
         con.convalidated AS "isValidated",
