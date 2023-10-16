@@ -1,27 +1,23 @@
+import type { BloodhoundConfig } from './types';
 import type { ClientConfig } from 'pg';
 import { instantiateDatabaseConnection, getDatabaseObjects } from '@/database';
 import { buildSchema } from './utils/schemaBuilder';
 
-async function fetchDatabaseObjects(connectionConfig: ClientConfig) {
+async function fetchDatabaseObjects(
+  connectionConfig: ClientConfig,
+  namespaces?: string[]
+) {
   const db = await instantiateDatabaseConnection(connectionConfig);
-  return await getDatabaseObjects(db);
+  return await getDatabaseObjects(db, namespaces);
 }
 
-export async function introspectDatabase(connectionConfig: ClientConfig) {
-  const dbObjects = await fetchDatabaseObjects(connectionConfig);
+export async function introspectDatabase(config: BloodhoundConfig) {
+  const dbObjects = await fetchDatabaseObjects(
+    config.connectionConfig,
+    config.namespaces
+  );
 
   const schema = buildSchema(dbObjects);
 
-  console.dir(schema, { depth: 10 });
+  return schema;
 }
-
-// temp: testing
-const config: ClientConfig = {
-  user: 'postgres',
-  host: 'localhost',
-  database: 'postgres',
-  password: 'postgres',
-  port: 54322,
-};
-
-void introspectDatabase(config);

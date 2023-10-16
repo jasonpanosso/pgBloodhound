@@ -12,7 +12,10 @@ import {
   validateRelationsQuery,
 } from '@/validators';
 
-export async function getDatabaseObjects(db: Client): Promise<DatabaseObjects> {
+export async function getDatabaseObjects(
+  db: Client,
+  includedNamespaces?: string[]
+): Promise<DatabaseObjects> {
   try {
     await db.query('BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE');
 
@@ -22,7 +25,11 @@ export async function getDatabaseObjects(db: Client): Promise<DatabaseObjects> {
       throw new Error('No namespaces found in database');
     }
 
-    const namespaceOids = namespaces.map((ns) => ns.oid);
+    const filteredNamespaces = includedNamespaces
+      ? namespaces.filter((ns) => includedNamespaces.includes(ns.name))
+      : namespaces;
+
+    const namespaceOids = filteredNamespaces.map((ns) => ns.oid);
 
     const relationsQueryResult = await executeSqlFile(
       db,
@@ -68,7 +75,7 @@ export async function getDatabaseObjects(db: Client): Promise<DatabaseObjects> {
     );
 
     return {
-      namespaces,
+      namespaces: filteredNamespaces,
       relations,
       columns,
       constraints,

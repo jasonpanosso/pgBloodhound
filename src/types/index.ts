@@ -9,6 +9,8 @@ import type {
   RelationQuery,
 } from '@/validators';
 
+export type { BloodhoundConfig } from './config';
+
 export type DatabaseObjects = {
   namespaces: NamespaceQuery[];
   relations: RelationQuery[];
