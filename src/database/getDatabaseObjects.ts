@@ -11,6 +11,7 @@ import {
   validateNamespacesQuery,
   validateRangesQuery,
   validateRelationsQuery,
+  validateRoutinesQuery,
 } from '@/validators';
 
 async function getAndValidate<T>(
@@ -94,6 +95,13 @@ export async function getDatabaseObjects(
       namespaceOids
     );
 
+    const routines = await getAndValidate(
+      db,
+      SqlFileName.Routines,
+      validateRoutinesQuery,
+      namespaceOids
+    );
+
     return {
       namespaces: filteredNamespaces,
       relations,
@@ -103,6 +111,7 @@ export async function getDatabaseObjects(
       domains,
       ranges,
       compositeTypes,
+      routines,
     };
   } catch (err) {
     // TODO

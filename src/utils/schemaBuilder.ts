@@ -63,6 +63,7 @@ export function buildSchema(dbObjects: DatabaseObjects): Schema {
     ranges,
     domains,
     compositeTypes,
+    routines,
   } = dbObjects;
 
   const namespaceMap = createNamespaceNameToOidMap(namespaces);
@@ -78,6 +79,7 @@ export function buildSchema(dbObjects: DatabaseObjects): Schema {
       domains: {},
       ranges: {},
       compositeTypes: {},
+      routines: {},
     };
   }
 
@@ -99,6 +101,7 @@ export function buildSchema(dbObjects: DatabaseObjects): Schema {
   populateSchema(domains, 'domains');
   populateSchema(ranges, 'ranges');
   populateSchema(compositeTypes, 'compositeTypes');
+  populateSchema(routines, 'routines');
 
   return schema;
 }

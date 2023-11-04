@@ -9,3 +9,4 @@ export {
   compositeTypeQueryValidator,
   type CompositeTypeQuery,
 } from './compositeTypes';
+export { routinesQueryValidator, type RoutineQuery } from './routines';

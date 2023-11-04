@@ -7,6 +7,7 @@ import type {
   NamespaceQuery,
   RangeQuery,
   RelationQuery,
+  RoutineQuery,
 } from '@/validators';
 
 export type { BloodhoundConfig } from './config';
@@ -20,6 +21,7 @@ export type DatabaseObjects = {
   domains: DomainQuery[];
   ranges: RangeQuery[];
   compositeTypes: CompositeTypeQuery[];
+  routines: RoutineQuery[];
 };
 
 // TODO: TEMP types for testing
@@ -42,6 +44,7 @@ export type NamespaceData = {
   domains: Record<string, DomainQuery>;
   ranges: Record<string, RangeQuery>;
   compositeTypes: Record<string, CompositeTypeQuery>;
+  routines: Record<string, RoutineQuery>;
 };
 
 export type Schema = Record<string, NamespaceData>;

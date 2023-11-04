@@ -8,6 +8,7 @@ import {
   domainsQueryValidator,
   rangesQueryValidator,
   compositeTypeQueryValidator,
+  routinesQueryValidator,
 } from './schemas';
 
 export function validateColumnsQuery(queryResult: unknown[]) {
@@ -40,4 +41,8 @@ export function validateRangesQuery(queryResult: unknown[]) {
 
 export function validateCompositeTypesQuery(queryResult: unknown[]) {
   return z.array(compositeTypeQueryValidator).parse(queryResult);
+}
+
+export function validateRoutinesQuery(queryResult: unknown[]) {
+  return z.array(routinesQueryValidator).parse(queryResult);
 }

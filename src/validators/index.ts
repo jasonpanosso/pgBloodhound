@@ -7,6 +7,7 @@ export {
   type DomainQuery,
   type RangeQuery,
   type CompositeTypeQuery,
+  type RoutineQuery,
 } from './schemas';
 
 export {
@@ -18,4 +19,5 @@ export {
   validateDomainsQuery,
   validateRangesQuery,
   validateCompositeTypesQuery,
+  validateRoutinesQuery,
 } from './validateQueries';

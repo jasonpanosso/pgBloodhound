@@ -12,6 +12,7 @@ export enum SqlFileName {
   Namespaces = 'namespaces',
   Ranges = 'ranges',
   Relations = 'relations',
+  Routines = 'routines',
 }
 
 export async function executeSqlFile(
